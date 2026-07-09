@@ -4,7 +4,7 @@
 
 > A self-hosted **multi-agent software-engineering system** (an "AI dev team") built around a **grounded feedback loop** — designed to be buildable **solo, part-time, over ~5–8 months**.
 
-![Status](https://img.shields.io/badge/status-Phase%203%20·%20building-yellow)
+![Status](https://img.shields.io/badge/status-Phase%204%20·%20building-yellow)
 ![Engine](https://img.shields.io/badge/engine-LangGraph-6f42c1)
 ![Gateway](https://img.shields.io/badge/gateway-LiteLLM-0aa)
 ![North Star](https://img.shields.io/badge/north--star-SWE--bench-orange)
@@ -185,8 +185,8 @@ sequenceDiagram
 | **0** | Foundation + local environment | ~1 week | ✅ Done |
 | **1** | State + contracts + minimal loop | ~4–6 wks | ✅ Done |
 | **2** | Grounded verification layer | ~3–4 wks | ✅ Done |
-| **3** | Gateway + tools + memory | ~5–6 wks | 🟨 In progress |
-| **4** | Observability + full roster | ~5–6 wks | ⬜ Not started |
+| **3** | Gateway + tools + memory | ~5–6 wks | ✅ Done |
+| **4** | Observability + full roster | ~5–6 wks | 🟨 In progress |
 | **5** | Resilience + human-in-the-loop | ~5–6 wks | ⬜ Not started |
 | **6** | Evaluation + red-teaming | ~5–6 wks | ⬜ Not started |
 | **7** | Self-improvement (ongoing) | ongoing | ⬜ Not started |
@@ -240,11 +240,11 @@ sequenceDiagram
 ## 🔌 Phase 3 — Model Gateway, Tools & Memory
 *Week 10–16*
 
-- [ ] **LLMOps Gateway (LiteLLM, Self-Hosted):** route every model call through a self-hosted LiteLLM proxy as one OpenAI-compatible endpoint. Off the shelf: model pinning, complexity-based routing (cheap model for simple steps, frontier for hard ones), fallback chains + cooldowns on 429/5xx, and **hard per-workflow cost caps**.
-- [ ] **Cost & Iteration Circuit Breakers:** global budget + iteration ceilings per workflow. On breach → halt, block further calls, alert the human. Combined with LiteLLM caps, cost becomes fully predictable.
-- [ ] **Decoupled Tool Registry (MCP + Default-Deny):** expose tools via **MCP** (Linux Foundation standard). Enforce a **default-deny, role-scoped** permission matrix (e.g., Coder may read files and run `git`, but is barred from destructive DB ops or prod deploys). Load only needed tool schemas (Tool-RAG) to keep context small.
-- [ ] **Secure Execution Sandbox (Hardened by Threat Model):** all agent-generated code runs isolated. Start with hardened **Docker** (network off, all caps dropped, read-only FS) or **gVisor** for syscall-level isolation; move to **Firecracker microVMs / E2B** for untrusted or prompt-injected code. **Never execute agent code on the host.**
-- [ ] **Hierarchical Memory (Start Small, Grow by Need):** add layers only when the benchmark demands:
+- [x] **LLMOps Gateway (LiteLLM, Self-Hosted):** route every model call through a self-hosted LiteLLM proxy as one OpenAI-compatible endpoint. Off the shelf: model pinning, complexity-based routing (cheap model for simple steps, frontier for hard ones), fallback chains + cooldowns on 429/5xx, and **hard per-workflow cost caps**.
+- [x] **Cost & Iteration Circuit Breakers:** global budget + iteration ceilings per workflow. On breach → halt, block further calls, alert the human. Combined with LiteLLM caps, cost becomes fully predictable.
+- [x] **Decoupled Tool Registry (MCP + Default-Deny):** expose tools via **MCP** (Linux Foundation standard). Enforce a **default-deny, role-scoped** permission matrix (e.g., Coder may read files and run `git`, but is barred from destructive DB ops or prod deploys). Load only needed tool schemas (Tool-RAG) to keep context small.
+- [x] **Secure Execution Sandbox (Hardened by Threat Model):** all agent-generated code runs isolated. Start with hardened **Docker** (network off, all caps dropped, read-only FS) or **gVisor** for syscall-level isolation; move to **Firecracker microVMs / E2B** for untrusted or prompt-injected code. **Never execute agent code on the host.**
+- [x] **Hierarchical Memory (Start Small, Grow by Need):** add layers only when the benchmark demands:
   1. **Working memory** — the running context window.
   2. **Episodic memory** — past runs/failures in a vector store; retrieve by similarity. Use **mem0** or **LangMem** (native to LangGraph).
   3. **Semantic memory** — consolidated project facts/conventions (*"Postgres is mandated"*).
