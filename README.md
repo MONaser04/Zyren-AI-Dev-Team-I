@@ -4,7 +4,7 @@
 
 > A self-hosted **multi-agent software-engineering system** (an "AI dev team") built around a **grounded feedback loop** — designed to be buildable **solo, part-time, over ~5–8 months**.
 
-![Status](https://img.shields.io/badge/status-Phase%201%20·%20building-yellow)
+![Status](https://img.shields.io/badge/status-Phase%203%20·%20building-yellow)
 ![Engine](https://img.shields.io/badge/engine-LangGraph-6f42c1)
 ![Gateway](https://img.shields.io/badge/gateway-LiteLLM-0aa)
 ![North Star](https://img.shields.io/badge/north--star-SWE--bench-orange)
@@ -184,8 +184,8 @@ sequenceDiagram
 |:---:|---|:---:|:---:|
 | **0** | Foundation + local environment | ~1 week | ✅ Done |
 | **1** | State + contracts + minimal loop | ~4–6 wks | ✅ Done |
-| **2** | Grounded verification layer | ~3–4 wks | 🟨 In progress |
-| **3** | Gateway + tools + memory | ~5–6 wks | ⬜ Not started |
+| **2** | Grounded verification layer | ~3–4 wks | ✅ Done |
+| **3** | Gateway + tools + memory | ~5–6 wks | 🟨 In progress |
 | **4** | Observability + full roster | ~5–6 wks | ⬜ Not started |
 | **5** | Resilience + human-in-the-loop | ~5–6 wks | ⬜ Not started |
 | **6** | Evaluation + red-teaming | ~5–6 wks | ⬜ Not started |
