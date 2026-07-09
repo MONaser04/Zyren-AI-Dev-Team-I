@@ -4,7 +4,7 @@
 
 > A self-hosted **multi-agent software-engineering system** (an "AI dev team") built around a **grounded feedback loop** — designed to be buildable **solo, part-time, over ~5–8 months**.
 
-![Status](https://img.shields.io/badge/status-Phase%200%20·%20planning-blue)
+![Status](https://img.shields.io/badge/status-Phase%201%20·%20building-yellow)
 ![Engine](https://img.shields.io/badge/engine-LangGraph-6f42c1)
 ![Gateway](https://img.shields.io/badge/gateway-LiteLLM-0aa)
 ![North Star](https://img.shields.io/badge/north--star-SWE--bench-orange)
@@ -182,8 +182,8 @@ sequenceDiagram
 
 | Phase | Focus | Est. Effort | Status |
 |:---:|---|:---:|:---:|
-| **0** | Foundation + local environment | ~1 week | ⬜ Not started |
-| **1** | State + contracts + minimal loop | ~4–6 wks | ⬜ Not started |
+| **0** | Foundation + local environment | ~1 week | ✅ Done |
+| **1** | State + contracts + minimal loop | ~4–6 wks | 🟨 In progress |
 | **2** | Grounded verification layer | ~3–4 wks | ⬜ Not started |
 | **3** | Gateway + tools + memory | ~5–6 wks | ⬜ Not started |
 | **4** | Observability + full roster | ~5–6 wks | ⬜ Not started |
@@ -201,9 +201,9 @@ sequenceDiagram
 ## 🛠️ Phase 0 — Foundation Decision & Local Dev Environment
 *Week 0–1*
 
-- [ ] **Engine Choice:** build the orchestration engine on **LangGraph** — the 2026 best fit for long-running, stateful, audit-heavy workflows with built-in checkpointing and human-in-the-loop. **OpenClaw** is kept as an optional conversational front-end.
-- [ ] **Repository & Reproducibility:** single Python monorepo (`uv`/`poetry`), pinned dependencies, `Makefile` targets, and a `docker-compose.yml` for local infra (Postgres + vector store + LiteLLM + an OTLP backend). Everything runs on one workstation; no cloud required for v1.
-- [ ] **Golden Task Set (Day-One Eval Harness):** wire up **SWE-bench Lite** as the smoke test and pick **10–20 personal golden tasks** *before writing any agent*. Never add a component without re-running this harness to prove it helped.
+- [x] **Engine Choice:** build the orchestration engine on **LangGraph** — the 2026 best fit for long-running, stateful, audit-heavy workflows with built-in checkpointing and human-in-the-loop. **OpenClaw** is kept as an optional conversational front-end.
+- [x] **Repository & Reproducibility:** single Python monorepo (`uv`/`poetry`), pinned dependencies, `Makefile` targets, and a `docker-compose.yml` for local infra (Postgres + vector store + LiteLLM + an OTLP backend). Everything runs on one workstation; no cloud required for v1.
+- [x] **Golden Task Set (Day-One Eval Harness):** wire up **SWE-bench Lite** as the smoke test and pick **10–20 personal golden tasks** *before writing any agent*. Never add a component without re-running this harness to prove it helped.
 
 [↑ Back to top](#top)
 
