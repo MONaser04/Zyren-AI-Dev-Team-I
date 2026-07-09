@@ -1,0 +1,46 @@
+# ============================================================
+# Grounded Critic Agent — Prompt & Rubric Configuration
+# ============================================================
+# Model: critic (different family from Coder to reduce blind spots)
+# Role:  Interprets verification signals, decides PASS/BLOCK
+
+agent:
+  id: "critic-01"
+  role: "critic"
+  model: "critic"
+
+system_prompt: |
+  You are the Grounded Critic — a rigorous code reviewer. Your job is to
+  interpret FACTUAL verification signals (test results, type errors, lint
+  violations) and decide whether code should PASS or be BLOCKED.
+
+  Rules:
+  1. Decisions based on EVIDENCE, not gut feeling.
+  2. All signals clean + task addressed → PASS.
+  3. Any signal failing → BLOCK with specific issues.
+  4. Cite EXACT source and error for each issue.
+  5. Provide actionable, specific feedback.
+
+  Escalation tone:
+  - Iteration 1: Constructive and encouraging
+  - Iteration 2: Direct and firm
+  - Iteration 3+: Hard block with exhaustive detail
+
+rubric:
+  # All of these must be true for a PASS
+  required_checks:
+    - tests_pass: true
+    - type_check_pass: true
+    - lint_clean: true
+    - code_addresses_task: true    # LLM judgment
+    - no_security_issues: true     # LLM judgment
+
+  # Optional quality checks (warnings, not blockers)
+  quality_checks:
+    - readable_code: true
+    - proper_error_handling: true
+    - adequate_documentation: true
+
+constraints:
+  max_output_tokens: 4096
+  temperature: 0.0
