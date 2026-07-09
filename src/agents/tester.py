@@ -11,6 +11,8 @@ verification.steps module. The TesterAgent is a thin orchestrator.
 
 from __future__ import annotations
 
+from observability.instrumentation import trace_agent_invocation
+
 from typing import TYPE_CHECKING
 
 from agents.base import BaseAgent
@@ -43,6 +45,8 @@ class TesterAgent(BaseAgent):
             llm_client=LLMClient(),  # Unused but required by base
         )
         self.prior_coverage = prior_coverage
+
+    @trace_agent_invocation(agent_role="tester")
 
     def run(self, patch: CodePatch) -> VerificationReport:  # type: ignore[override]
         """Run verification tools on a code patch.

@@ -365,6 +365,163 @@ class RebuttalJudgment(BaseContract):
 
 
 # ============================================================
+# Phase 4: Semantic Router Contract
+# ============================================================
+
+
+class TaskComplexity(StrEnum):
+    """Task complexity classification for semantic routing."""
+
+    SIMPLE = "simple"       # Fast Lane: Coder + Critic only
+    MEDIUM = "medium"       # Full SDLC (truncated)
+    COMPLEX = "complex"     # Full SDLC (full roster)
+
+
+class RoutingDecision(BaseContract):
+    """Output of the Semantic Router."""
+
+    complexity: TaskComplexity
+    confidence: float           # 0.0–1.0
+    safe_fallback: bool         # True if confidence < threshold → full pipeline
+    reasoning: str
+    fast_lane: bool             # convenience: complexity == SIMPLE and not safe_fallback
+
+
+# ============================================================
+# Phase 4: Full Agent Roster Contracts
+# ============================================================
+
+# --- Producer Output Contracts ---
+
+class ProductRequirementDoc(BaseContract):
+    """Product Analyst output: PRD + user stories + acceptance criteria."""
+    user_stories: list[str]
+    acceptance_criteria: list[str]
+    constraints: list[str]
+    non_functional: list[str]
+
+
+class TaskDAG(BaseContract):
+    """Planner output: task graph with dependencies + agent assignments."""
+    nodes: list["TaskNode"]  # id, desc, depends_on[], agent_role, complexity
+    critical_path: list[str]
+
+
+class TaskNode(BaseContract):
+    id: str
+    description: str
+    depends_on: list[str] = Field(default_factory=list)
+    agent_role: str
+    complexity: TaskComplexity
+
+
+class ArchitectDesign(BaseContract):
+    """Architect output: ADRs + component diagram + tech choices."""
+    adrs: list["ADR"]
+    component_diagram: str  # mermaid/plantuml
+    tech_choices: list[str]
+    interfaces: list["InterfaceSpec"]
+
+
+class ADR(BaseContract):
+    """Architecture Decision Record."""
+    title: str
+    context: str
+    decision: str
+    consequences: str
+    status: str = "proposed"
+
+
+class InterfaceSpec(BaseContract):
+    name: str
+    protocol: str  # "REST" | "gRPC" | "GraphQL" | "async"
+    contract: str  # OpenAPI/Protobuf ref
+
+
+class UXDesign(BaseContract):
+    """UX Agent output (conditional: frontend only)."""
+    wireframes: list[str]  # descriptions/paths
+    accessibility_notes: str
+    design_system_refs: list[str]
+
+
+class DataSchema(BaseContract):
+    """DB Engineer output (conditional: persistence only)."""
+    tables: list["TableSpec"]
+    migrations: list[str]
+    indexes: list[str]
+
+
+class TableSpec(BaseContract):
+    name: str
+    columns: list["ColumnSpec"]
+    primary_key: list[str]
+    foreign_keys: list["ForeignKeySpec"]
+
+
+class ColumnSpec(BaseContract):
+    name: str
+    type: str
+    nullable: bool = False
+    default: str | None = None
+
+
+class ForeignKeySpec(BaseContract):
+    columns: list[str]
+    references: str  # "table(columns)"
+
+
+class ResearchNotes(BaseContract):
+    """Researcher output (on-demand)."""
+    topic: str
+    findings: list[str]
+    sources: list[str]
+    recommendations: list[str]
+
+
+class SecurityReport(BaseContract):
+    """Security Agent output (dedicated critic for Coder/Architect/Security)."""
+    vulnerabilities: list["Vulnerability"]
+    sast_summary: str
+    recommendations: list[str]
+    risk_level: str  # "low" | "medium" | "high" | "critical"
+
+
+class Vulnerability(BaseContract):
+    id: str
+    severity: str
+    description: str
+    file: str
+    line: int | None = None
+    fix_hint: str
+
+
+class IntegratorOutput(BaseContract):
+    """Integrator output (Fan-in merge result)."""
+    merged_files: list["FileChange"]
+    conflicts_resolved: list[str]
+    rollback_plan: str
+
+
+class FileChange(BaseContract):
+    path: str
+    action: str  # "create" | "update" | "delete"
+    content: str | None = None
+
+
+class DocsOutput(BaseContract):
+    """Docs Agent output (two milestones)."""
+    milestone: str  # "post_architecture" | "post_integration"
+    adrs: list[ADR] | None = None
+    readme: str | None = None
+    openapi_spec: str | None = None
+    inline_docs: list[str] | None = None
+
+
+# --- Liaison / Supervisor (no new contracts; use state + events) ---
+
+
+# ============================================================
 # WorkflowState — State Projection
 # ============================================================
 
@@ -419,3 +576,13 @@ class WorkflowState(BaseModel):
         default=None,
         description="Error message if workflow failed.",
     )
+    
+    # Phase 4 outputs
+    architect_design: dict[str, Any] | None = None
+    ux_design: dict[str, Any] | None = None
+    data_schema: dict[str, Any] | None = None
+    security_report: dict[str, Any] | None = None
+    research_notes: dict[str, Any] | None = None
+    integrator_output: dict[str, Any] | None = None
+    docs_adr: dict[str, Any] | None = None
+    docs_final: dict[str, Any] | None = None

@@ -127,6 +127,36 @@ def _apply_event(state: WorkflowState, event: Event) -> WorkflowState:
                 }
             )
 
+        case EventType.PRODUCT_REQUIREMENTS_CREATED:
+            return state.model_copy(update={'product_requirements': event.payload.get('prd')})
+
+        case EventType.TASK_DAG_CREATED:
+            return state.model_copy(update={'task_dag': event.payload.get('dag')})
+
+        case EventType.ARCHITECT_DESIGN_CREATED:
+            return state.model_copy(update={'architect_design': event.payload.get('design')})
+
+        case EventType.UX_DESIGN_CREATED:
+            return state.model_copy(update={'ux_design': event.payload.get('design')})
+
+        case EventType.DB_SCHEMA_CREATED:
+            return state.model_copy(update={'data_schema': event.payload.get('schema')})
+
+        case EventType.SECURITY_REPORT_CREATED:
+            return state.model_copy(update={'security_report': event.payload.get('report')})
+
+        case EventType.RESEARCH_NOTES_CREATED:
+            return state.model_copy(update={'research_notes': event.payload.get('notes')})
+
+        case EventType.INTEGRATION_COMPLETED:
+            return state.model_copy(update={'integrator_output': event.payload.get('integration')})
+
+        case EventType.DOCUMENTATION_CREATED:
+            docs = event.payload.get('docs', {})
+            if 'adr_id' in docs or docs.get('title', '').startswith('ADR'):
+                return state.model_copy(update={'docs_adr': docs})
+            return state.model_copy(update={'docs_final': docs})
+
         case _:
             # Unknown event types are silently ignored for forward compatibility
             return state

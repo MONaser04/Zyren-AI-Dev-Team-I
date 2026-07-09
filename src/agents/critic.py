@@ -13,6 +13,8 @@ Phase 2 enhancements:
 
 from __future__ import annotations
 
+from observability.instrumentation import trace_agent_invocation
+
 from typing import TYPE_CHECKING
 
 from agents.base import BaseAgent
@@ -116,6 +118,8 @@ class CriticAgent(BaseAgent):
         self.model = model
         self.rubric_name = rubric_name
 
+    @trace_agent_invocation(agent_role="critic")
+
     def run(  # type: ignore[override]
         self,
         patch: CodePatch,
@@ -141,6 +145,8 @@ class CriticAgent(BaseAgent):
         )
 
         return self._review_with_llm(patch, report, escalation)
+
+    @trace_agent_invocation(agent_role="judge_rebuttal")
 
     def judge_rebuttal(
         self,

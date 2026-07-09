@@ -11,6 +11,8 @@ Each role gets a CriticAgent with a tailored system prompt and rubric.
 
 from __future__ import annotations
 
+from observability.instrumentation import trace_agent_invocation
+
 from typing import TYPE_CHECKING
 
 from agents.critic import CriticAgent

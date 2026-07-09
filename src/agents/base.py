@@ -8,6 +8,8 @@ a typed run() method that takes a contract in and returns a contract out.
 
 from __future__ import annotations
 
+from observability.instrumentation import trace_agent_invocation
+
 import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any

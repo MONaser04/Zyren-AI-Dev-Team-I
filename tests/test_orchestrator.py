@@ -23,8 +23,19 @@ from contracts.schemas import (
     RebuttalRequest,
     ReviewDecision,
     ReviewIssue,
+    RoutingDecision,
     Severity,
+    TaskComplexity,
     Verdict,
+    ArchitectDesign,
+    UXDesign,
+    DataSchema,
+    SecurityReport,
+    ResearchNotes,
+    IntegratorOutput,
+    DocsOutput,
+    ProductRequirementDoc,
+    TaskDAG,
 )
 from gateway.llm_client import LLMClient
 from orchestrator.graph import (
@@ -88,8 +99,12 @@ class TestRebuttalOutcomeRouter:
             "rebuttal_outcome": "accepted",
             "workflow_id": "wf-001",
             "task_description": "test",
+            "fast_lane": True,
         }
-        assert _rebuttal_outcome_router(state) == "accepted"
+        assert _rebuttal_outcome_router(state) == "accepted_fast"
+        
+        state["fast_lane"] = False
+        assert _rebuttal_outcome_router(state) == "accepted_full"
 
     def test_rejected_routes_to_rejected(self) -> None:
         state: GraphState = {
@@ -171,6 +186,14 @@ class TestGraphExecution:
             verdict=Verdict.PASS,
             justification="All checks passed.",
         )
+        
+        mock_routing_decision = RoutingDecision(
+            complexity=TaskComplexity.SIMPLE,
+            confidence=1.0,
+            safe_fallback=False,
+            reasoning="test",
+            fast_lane=True,
+        )
 
         graph = build_feedback_loop(
             event_store=store, llm_client=client,
@@ -185,6 +208,10 @@ class TestGraphExecution:
             patch(
                 "orchestrator.graph.CriticAgent.run",
                 return_value=mock_decision,
+            ),
+            patch(
+                "orchestrator.semantic_router.SemanticRouter.classify",
+                return_value=mock_routing_decision,
             ),
         ):
             result = compiled.invoke({
@@ -237,6 +264,14 @@ class TestGraphExecution:
             reasoning="The issues are legitimate.",
         )
 
+        mock_routing_decision = RoutingDecision(
+            complexity=TaskComplexity.SIMPLE,
+            confidence=1.0,
+            safe_fallback=False,
+            reasoning="test",
+            fast_lane=True,
+        )
+
         graph = build_feedback_loop(
             event_store=store, llm_client=client,
         )
@@ -258,6 +293,10 @@ class TestGraphExecution:
             patch(
                 "orchestrator.graph.CriticAgent.judge_rebuttal",
                 return_value=mock_rebuttal_judgment,
+            ),
+            patch(
+                "orchestrator.semantic_router.SemanticRouter.classify",
+                return_value=mock_routing_decision,
             ),
         ):
             result = compiled.invoke({
@@ -327,6 +366,14 @@ class TestGraphExecution:
             reasoning="Coder correctly identified false positive.",
         )
 
+        mock_routing_decision = RoutingDecision(
+            complexity=TaskComplexity.SIMPLE,
+            confidence=1.0,
+            safe_fallback=False,
+            reasoning="test",
+            fast_lane=True,
+        )
+
         graph = build_feedback_loop(
             event_store=store, llm_client=client,
         )
@@ -349,6 +396,10 @@ class TestGraphExecution:
                 "orchestrator.graph.CriticAgent.judge_rebuttal",
                 return_value=mock_judgment,
             ),
+            patch(
+                "orchestrator.semantic_router.SemanticRouter.classify",
+                return_value=mock_routing_decision,
+            ),
         ):
             result = compiled.invoke({
                 "workflow_id": "test-wf-rebut",
@@ -361,6 +412,7 @@ class TestGraphExecution:
             })
 
         # Rebuttal accepted → should complete as PASS
+        print(f"DEBUG: final result = {result}")
         assert result["verdict"] == "PASS"
 
         # Verify rebuttal events were emitted
@@ -369,3 +421,71 @@ class TestGraphExecution:
         assert "rebuttal_submitted" in event_types
         assert "rebuttal_judged" in event_types
         assert "workflow_completed" in event_types
+
+    def test_full_sdlc_workflow(self) -> None:
+        """Simulate a workflow that goes through the full SDLC."""
+        from contracts.schemas import (
+            ArchitectDesign, TaskDAG, UXDesign, DataSchema,
+            SecurityReport, ResearchNotes, IntegratorOutput, DocsOutput
+        )
+        store = SQLiteEventStore(db_path=":memory:")
+        client = LLMClient()
+
+        mock_patch = CodePatch(
+            task_id="t-001",
+            workflow_id="test-wf-sdlc",
+            iteration=1,
+            files=[FileContent(path="main.py", content="x = 1\n")],
+        )
+        mock_decision = ReviewDecision(
+            task_id="t-001",
+            workflow_id="test-wf-sdlc",
+            iteration=1,
+            verdict=Verdict.PASS,
+            justification="Passed SDLC",
+        )
+        mock_routing_decision = RoutingDecision(
+            complexity=TaskComplexity.COMPLEX,
+            confidence=1.0,
+            safe_fallback=False,
+            reasoning="test",
+            fast_lane=False,
+        )
+
+        graph = build_feedback_loop(event_store=store, llm_client=client)
+        compiled = graph.compile()
+
+        with (
+            patch("agents.product_analyst.ProductAnalystAgent.run", return_value=ProductRequirementDoc(user_stories=[], acceptance_criteria=[], constraints=[], non_functional=[])),
+            patch("agents.planner.PlannerAgent.run", return_value=TaskDAG(nodes=[], critical_path=[])),
+            patch("agents.architect.ArchitectAgent.run", return_value=ArchitectDesign(adrs=[], component_diagram="graph TD", tech_choices=[], interfaces=[])),
+            patch("agents.ux.UXAgent.run", return_value=UXDesign(wireframes=[], accessibility_notes="none", design_system_refs=[])),
+            patch("agents.db_engineer.DBEngineerAgent.run", return_value=DataSchema(tables=[], migrations=[], indexes=[])),
+            patch("agents.security.SecurityAgent.run", return_value=SecurityReport(vulnerabilities=[], sast_summary="clean", recommendations=[], risk_level="low")),
+            patch("agents.researcher.ResearcherAgent.run", return_value=ResearchNotes(topic="none", findings=[], sources=[], recommendations=[])),
+            patch("orchestrator.graph.CoderAgent.run", return_value=mock_patch),
+            patch("agents.integrator.IntegratorAgent.run", return_value=IntegratorOutput(merged_files=[], conflicts_resolved=[], rollback_plan="revert")),
+            patch("agents.docs.DocsAgent.run", return_value=DocsOutput(milestone="post_architecture", adrs=[], readme="test", openapi_spec="test")),
+            patch("orchestrator.graph.CriticAgent.run", return_value=mock_decision),
+            patch("orchestrator.semantic_router.SemanticRouter.classify", return_value=mock_routing_decision),
+        ):
+            result = compiled.invoke({
+                "workflow_id": "test-wf-sdlc",
+                "task_description": "Complex system",
+                "language": "python",
+                "constraints": [],
+                "max_iterations": 3,
+                "current_iteration": 0,
+                "event_version": 0,
+                "product_requirements": {"reqs": []},
+            })
+
+        assert result["verdict"] == "PASS"
+        assert "architect_design" in result
+        assert "ux_design" in result
+        assert "data_schema" in result
+        assert "security_report" in result
+        assert "research_notes" in result
+        assert "integrator_output" in result
+        assert "docs_adr" in result
+        assert "docs_final" in result

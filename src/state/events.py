@@ -30,6 +30,7 @@ class EventType(StrEnum):
     # Workflow lifecycle
     TASK_CREATED = "task_created"
     WORKFLOW_STARTED = "workflow_started"
+    ROUTING_DECIDED = "routing_decided"
 
     # Coding cycle
     CODE_SUBMITTED = "code_submitted"
@@ -46,6 +47,17 @@ class EventType(StrEnum):
     # Phase 2: Rebuttal flow
     REBUTTAL_SUBMITTED = "rebuttal_submitted"
     REBUTTAL_JUDGED = "rebuttal_judged"
+    
+    # Phase 4: Full SDLC
+    PRODUCT_REQUIREMENTS_CREATED = "product_requirements_created"
+    TASK_DAG_CREATED = "task_dag_created"
+    ARCHITECT_DESIGN_CREATED = "architect_design_created"
+    UX_DESIGN_CREATED = "ux_design_created"
+    DB_SCHEMA_CREATED = "db_schema_created"
+    SECURITY_REPORT_CREATED = "security_report_created"
+    RESEARCH_NOTES_CREATED = "research_notes_created"
+    INTEGRATION_COMPLETED = "integration_completed"
+    DOCUMENTATION_CREATED = "documentation_created"
 
 
 # ============================================================
@@ -91,7 +103,7 @@ class Event(BaseModel):
         description="Event-specific data (JSON-serializable).",
     )
     version: int = Field(
-        ge=1,
+        ge=0,
         description="Monotonically increasing version per workflow (for optimistic locking).",
     )
     timestamp: datetime = Field(
@@ -309,6 +321,189 @@ def rebuttal_judged_event(
         event_type=EventType.REBUTTAL_JUDGED,
         version=version,
         payload={"judgment": judgment_data, "iteration": iteration},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+
+def routing_decided_event(
+    *,
+    workflow_id: str,
+    version: int,
+    decision_data: dict[str, Any],
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    """Create a ROUTING_DECIDED event."""
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="orchestrator",
+        event_type=EventType.ROUTING_DECIDED,
+        version=version,
+        payload={"decision": decision_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+
+def architect_design_event(
+    *,
+    workflow_id: str,
+    version: int,
+    design_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="architect",
+        event_type=EventType.ARCHITECT_DESIGN_CREATED,
+        version=version,
+        payload={"design": design_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def ux_design_event(
+    *,
+    workflow_id: str,
+    version: int,
+    design_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="ux",
+        event_type=EventType.UX_DESIGN_CREATED,
+        version=version,
+        payload={"design": design_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def db_schema_event(
+    *,
+    workflow_id: str,
+    version: int,
+    schema_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="db_engineer",
+        event_type=EventType.DB_SCHEMA_CREATED,
+        version=version,
+        payload={"schema": schema_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def security_report_event(
+    *,
+    workflow_id: str,
+    version: int,
+    report_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="security",
+        event_type=EventType.SECURITY_REPORT_CREATED,
+        version=version,
+        payload={"report": report_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def research_notes_event(
+    *,
+    workflow_id: str,
+    version: int,
+    notes_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="researcher",
+        event_type=EventType.RESEARCH_NOTES_CREATED,
+        version=version,
+        payload={"notes": notes_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def integration_event(
+    *,
+    workflow_id: str,
+    version: int,
+    integrator_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="integrator",
+        event_type=EventType.INTEGRATION_COMPLETED,
+        version=version,
+        payload={"integration": integrator_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def documentation_event(
+    *,
+    workflow_id: str,
+    version: int,
+    docs_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="docs",
+        event_type=EventType.DOCUMENTATION_CREATED,
+        version=version,
+        payload={"docs": docs_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def product_requirements_event(
+    *,
+    workflow_id: str,
+    version: int,
+    prd_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="product_analyst",
+        event_type=EventType.PRODUCT_REQUIREMENTS_CREATED,
+        version=version,
+        payload={"prd": prd_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+def task_dag_event(
+    *,
+    workflow_id: str,
+    version: int,
+    dag_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="planner",
+        event_type=EventType.TASK_DAG_CREATED,
+        version=version,
+        payload={"dag": dag_data},
         causation_id=causation_id,
         correlation_id=correlation_id,
     )

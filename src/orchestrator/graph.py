@@ -1,19 +1,18 @@
 """
-Orchestrator Graph — LangGraph Feedback Loop with Rebuttal
-=============================================================
+Orchestrator Graph — LangGraph Feedback Loop with Rebuttal + Full SDLC (Phase 4)
+================================================================================
 
-Phase 2 upgrade: adds the Agentic Pushback (rebuttal) edge:
+Phase 2 upgrade: adds the Agentic Pushback (rebuttal) edge.
+Phase 4 upgrade: adds Semantic Router (Fast Lane / Full SDLC) + DAG Fan-out/Fan-in.
 
-    START → assign_task → coder → tester → critic
-         ├─ PASS → complete
-         └─ BLOCK → should_rebut?
-              ├─ yes → coder_rebut → judge
-              │    ├─ ACCEPTED → complete
-              │    └─ REJECTED → increment → coder
-              └─ no → increment → coder
-                   └─ cap → fail
-
-Every transition emits an event to the Event Store.
+Architecture (after Phase 4):
+    START → assign_task → route (Semantic Router)
+              ├─ fast_lane: SIMPLE + high confidence → Coder → Tester → Critic → PASS/FAIL/Rebuttal
+              └─ full_lane: MEDIUM/COMPLEX or low confidence → Product Analyst → Planner → Architect
+                    → Fan-out (parallel): UX │ DB Engineer │ Security │ Researcher │ Coder
+                    → Fan-in: Integrator → Docs (post-arch ADRs) → Tester → Critic
+                    → if PASS → Docs (post-integration) → COMPLETE
+                    → if BLOCK → loop back to Coder
 """
 
 from __future__ import annotations
@@ -80,16 +79,47 @@ class GraphState(TypedDict, total=False):
     code_patch: dict[str, Any]
     verification_report: dict[str, Any]
     review_decision: dict[str, Any]
+    rebuttal: dict[str, Any]
+    rebuttal_judgment: dict[str, Any]
+    
+    # Phase 4 outputs
+    product_requirements: dict[str, Any]
+    task_dag: dict[str, Any]
+    architect_design: dict[str, Any]
+    ux_design: dict[str, Any]
+    data_schema: dict[str, Any]
+    security_report: dict[str, Any]
+    research_notes: dict[str, Any]
+    integrator_output: dict[str, Any]
+    docs_adr: dict[str, Any]
+    docs_final: dict[str, Any]
+    error: str
 
     # Loop control
     verdict: str
     feedback: str
-    error: str
 
     # Phase 2: Rebuttal tracking
     rebuttal_used: bool
     rebuttal_request: dict[str, Any]
     rebuttal_outcome: str
+
+    # Phase 4: Routing & Full SDLC state
+    routing_decision: dict[str, Any]  # RoutingDecision.model_dump()
+    fast_lane: bool
+    complexity: str  # "simple" | "medium" | "complex"
+    
+    # Full SDLC outputs
+    product_requirements: dict[str, Any]  # ProductRequirementDoc
+    task_dag: dict[str, Any]  # TaskDAG
+    architect_design: dict[str, Any]  # ArchitectDesign
+    ux_design: dict[str, Any]  # UXDesign (optional)
+    data_schema: dict[str, Any]  # DataSchema (optional)
+    security_report: dict[str, Any]  # SecurityReport
+    research_notes: dict[str, Any]  # ResearchNotes (optional)
+    integrator_output: dict[str, Any]  # IntegratorOutput
+    docs_adr: dict[str, Any]  # DocsOutput (post-arch)
+    docs_final: dict[str, Any]  # DocsOutput (post-integration)
 
     # Event versioning
     event_version: int
@@ -103,12 +133,12 @@ class GraphState(TypedDict, total=False):
 
 
 def _next_version(state: GraphState) -> int:
-    """Get the next event version from state."""
-    return state.get("event_version", 0) + 1
+    """Get the next event version from state (0 triggers auto-increment in store)."""
+    return 0
 
 
 # ============================================================
-# Node Functions
+# Node Functions — Phase 2 Core Loop (unchanged)
 # ============================================================
 
 
@@ -305,11 +335,18 @@ def _judge_rebuttal_node(
     )
     event_store.append(event)
 
-    return {
-        **state,
+    updates: dict[str, Any] = {
         "rebuttal_outcome": judgment.outcome.value,
         "event_version": version,
         "last_event_id": event.event_id,
+    }
+    
+    if judgment.outcome == RebuttalOutcome.ACCEPTED:
+        updates["verdict"] = Verdict.PASS.value
+
+    return {
+        **state,
+        **updates,
     }
 
 
@@ -326,9 +363,7 @@ def _complete_node(
     )
     event_store.append(event)
 
-    logger.info("Workflow PASSED: %s", state["workflow_id"])
     return {
-        **state,
         "verdict": Verdict.PASS.value,
         "event_version": version,
         "last_event_id": event.event_id,
@@ -363,7 +398,7 @@ def _fail_node(
 
 
 # ============================================================
-# Decision Routers
+# Decision Routers — Phase 2 Core Loop
 # ============================================================
 
 
@@ -376,7 +411,7 @@ def _should_continue(state: GraphState) -> str:
     """
     verdict = state.get("verdict", "")
     if verdict == Verdict.PASS.value:
-        return "complete"
+        return "complete" if state.get("fast_lane", True) else "docs_int"
 
     current = state.get("current_iteration", 1)
     max_iter = state.get("max_iterations", 3)
@@ -389,123 +424,457 @@ def _should_continue(state: GraphState) -> str:
 
 
 def _should_rebut_router(state: GraphState) -> str:
-    """Decide whether to attempt a rebuttal.
+    """Decide whether to attempt a rebuttal judgment.
 
-    Only rebut if:
-    - Rebuttal has not been used this iteration
-    - There are specific issues to dispute
+    If coder produced a rebuttal_request, we go to judge_rebuttal.
+    Otherwise, we increment.
     """
-    if state.get("rebuttal_used", False):
-        return "no_rebut"
-
-    # Check if there are issues worth disputing
-    decision_data = state.get("review_decision", {})
-    issues = decision_data.get("issues", [])
-    if not issues:
-        return "no_rebut"
-
-    return "try_rebut"
+    if state.get("rebuttal_request"):
+        return "try_rebut"
+    return "no_rebut"
 
 
 def _rebuttal_outcome_router(state: GraphState) -> str:
-    """Route after rebuttal judgment.
+    """Route after judge_rebuttal.
 
     Returns:
-        'accepted' if rebuttal was accepted → PASS.
+        'accepted_fast' if accepted and fast_lane is True
+        'accepted_full' if accepted and fast_lane is False
         'rejected' if rejected or no rebuttal → retry loop.
     """
     outcome = state.get("rebuttal_outcome", "")
-    if outcome == RebuttalOutcome.ACCEPTED.value:
-        return "accepted"
+    if outcome == RebuttalOutcome.ACCEPTED.value or outcome == "ACCEPTED" or outcome == "accepted" or outcome.lower() == "accepted":
+        return "accepted_fast" if state.get("fast_lane", True) else "accepted_full"
     return "rejected"
 
 
 # ============================================================
-# Graph Builder
+# Phase 4: Semantic Router & Full SDLC Nodes
 # ============================================================
 
 
+def _route_node(
+    state: GraphState, router: "SemanticRouter", event_store: EventStore
+) -> dict[str, Any]:
+    """Run semantic router and emit a ROUTING_DECIDED event."""
+    from state.events import routing_decided_event  # imported here to avoid circular
+    from contracts.schemas import RoutingDecision
+
+    decision = router.classify(
+        task_description=state["task_description"],
+        workflow_id=state["workflow_id"],
+    )
+
+    version = _next_version(state)
+    event = routing_decided_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        decision_data=decision.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "routing_decision": decision.model_dump(),
+        "complexity": decision.complexity.value,
+        "fast_lane": decision.fast_lane,
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+
+def _route_decision(state: GraphState) -> str:
+    """Route to Fast Lane or Full SDLC based on semantic router decision."""
+    return "fast" if state.get("fast_lane", False) else "full"
+
+
+def _product_analyst_node(
+    state: GraphState, agent: "ProductAnalystAgent", event_store: EventStore
+) -> dict[str, Any]:
+    """Product Analyst: produces PRD from task description."""
+    from state.events import product_requirements_event
+    from contracts.schemas import ProductRequirementDoc
+
+    prd = agent.run(state["task_description"], state.get("constraints", []))
+
+    version = _next_version(state)
+    event = product_requirements_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        prd_data=prd.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "product_requirements": prd.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+
+def _planner_node(
+    state: GraphState, agent: "PlannerAgent", event_store: EventStore
+) -> dict[str, Any]:
+    """Planner: produces TaskDAG from PRD."""
+    from state.events import task_dag_event
+    from contracts.schemas import TaskDAG, ProductRequirementDoc
+
+    prd = ProductRequirementDoc.model_validate(state["product_requirements"])
+    dag = agent.run(prd)
+
+    version = _next_version(state)
+    event = task_dag_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        dag_data=dag.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "task_dag": dag.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+
+
+def _architect_node(
+    state: GraphState, agent: "ArchitectAgent", event_store: "EventStore"
+) -> dict[str, Any]:
+    from state.events import architect_design_event
+    from contracts.schemas import TaskDAG
+
+    dag = TaskDAG.model_validate(state.get("task_dag", {})) if "task_dag" in state else None
+    design = agent.run(dag)
+    
+    version = _next_version(state)
+    event = architect_design_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        design_data=design.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        **state,
+        "architect_design": design.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+def _fanout_ux_node(state: GraphState, agent: "UXAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import ux_design_event
+    from contracts.schemas import ArchitectDesign, ProductRequirementDoc
+    
+    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
+    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    
+    design = agent.run(arch, prd)
+    
+    version = _next_version(state)
+    event = ux_design_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        design_data=design.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        "ux_design": design.model_dump(),
+    }
+
+def _fanout_db_node(state: GraphState, agent: "DBEngineerAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import db_schema_event
+    from contracts.schemas import ArchitectDesign, ProductRequirementDoc
+    
+    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
+    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    
+    schema = agent.run(arch, prd)
+    
+    version = _next_version(state)
+    event = db_schema_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        schema_data=schema.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        "data_schema": schema.model_dump(),
+    }
+
+def _fanout_security_node(state: GraphState, agent: "SecurityAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import security_report_event
+    from contracts.schemas import ArchitectDesign
+    
+    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
+    report = agent.run(arch)
+    
+    version = _next_version(state)
+    event = security_report_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        report_data=report.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        "security_report": report.model_dump(),
+    }
+
+def _fanout_researcher_node(state: GraphState, agent: "ResearcherAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import research_notes_event
+    from contracts.schemas import ArchitectDesign, ProductRequirementDoc
+    
+    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
+    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    
+    notes = agent.run(prd, arch)
+    
+    version = _next_version(state)
+    event = research_notes_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        notes_data=notes.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        "research_notes": notes.model_dump(),
+    }
+
+def _fanout_coder_node(state: GraphState, agent: "CoderAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import code_submitted_event
+    
+    iteration = state.get("current_iteration", 1)
+    # The SDLC path uses the full state dict for Coder
+    patch = agent.run(state)
+    
+    version = _next_version(state)
+    event = code_submitted_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        patch_data=patch.model_dump(mode="json"),
+        iteration=iteration,
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        "code_patch": patch.model_dump(),
+    }
+
+def _integrator_node(
+    state: GraphState, agent: "IntegratorAgent", event_store: "EventStore"
+) -> dict[str, Any]:
+    from state.events import integration_event
+    
+    out = agent.run(state)
+    
+    version = _next_version(state)
+    event = integration_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        integrator_data=out.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        **state,
+        "integrator_output": out.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+def _docs_arch_node(state: GraphState, agent: "DocsAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import documentation_event
+    
+    out = agent.run(state, phase="architecture")
+    
+    version = _next_version(state)
+    event = documentation_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        docs_data=out.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        **state,
+        "docs_adr": out.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+def _docs_int_node(state: GraphState, agent: "DocsAgent", event_store: "EventStore") -> dict[str, Any]:
+    from state.events import documentation_event
+    
+    out = agent.run(state, phase="integration")
+    
+    version = _next_version(state)
+    event = documentation_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        docs_data=out.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+    
+    return {
+        **state,
+        "docs_final": out.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+def _increment_node(state: GraphState) -> dict[str, Any]:
+    return {"current_iteration": state.get("current_iteration", 1) + 1}
+
+# ============================================================
+# Graph Compilation
+# ============================================================
+
 def build_feedback_loop(
-    event_store: EventStore,
-    llm_client: LLMClient,
-    coder_model: str = "frontier",
-    critic_model: str = "critic",
-) -> StateGraph[GraphState]:
-    """Build the feedback loop with rebuttal as a LangGraph StateGraph.
+    event_store: "EventStore",
+    llm_client: "LLMClient",
+) -> StateGraph:
+    """Compile the LangGraph state machine with all agents (Phase 4)."""
+    from functools import partial
+    
+    from agents.coder import CoderAgent
+    from agents.tester import TesterAgent
+    from agents.critic import CriticAgent
+    from orchestrator.semantic_router import SemanticRouter
+    from agents.product_analyst import ProductAnalystAgent
+    from agents.planner import PlannerAgent
+    from agents.architect import ArchitectAgent
+    from agents.ux import UXAgent
+    from agents.db_engineer import DBEngineerAgent
+    from agents.security import SecurityAgent
+    from agents.researcher import ResearcherAgent
+    from agents.integrator import IntegratorAgent
+    from agents.docs import DocsAgent
 
-    Architecture (Phase 2):
-        assign_task → coder → tester → critic
-             ├─ complete (PASS)
-             ├─ coder_rebut → judge_rebuttal
-             │    ├─ accepted → complete
-             │    └─ rejected → increment → coder
-             └─ fail (cap reached)
+    coder = CoderAgent(agent_id="c1", llm_client=llm_client)
+    tester = TesterAgent(agent_id="t1")
+    critic = CriticAgent(agent_id="cr1", llm_client=llm_client)
+    
+    router = SemanticRouter(llm_client=llm_client)
+    pa = ProductAnalystAgent(agent_id="pa1", llm_client=llm_client)
+    planner = PlannerAgent(agent_id="pl1", llm_client=llm_client)
+    arch = ArchitectAgent(agent_id="ar1", llm_client=llm_client)
+    ux = UXAgent(agent_id="ux1", llm_client=llm_client)
+    db = DBEngineerAgent(agent_id="db1", llm_client=llm_client)
+    sec = SecurityAgent(agent_id="sec1", llm_client=llm_client)
+    res = ResearcherAgent(agent_id="res1", llm_client=llm_client)
+    integ = IntegratorAgent(agent_id="in1", llm_client=llm_client)
+    docs = DocsAgent(agent_id="doc1", llm_client=llm_client)
 
-    Args:
-        event_store: The event store for persisting events.
-        llm_client: The LLM client for agent calls.
-        coder_model: Model alias for the Coder agent.
-        critic_model: Model alias for the Critic agent.
+    workflow = StateGraph(GraphState)
 
-    Returns:
-        A compiled LangGraph StateGraph.
-    """
-    # Create agents
-    coder = CoderAgent(llm_client=llm_client, model=coder_model)
-    tester = TesterAgent()
-    critic = CriticAgent(llm_client=llm_client, model=critic_model)
+    workflow.add_node("assign_task", partial(_assign_task_node, event_store=event_store))
+    workflow.add_node("coder", partial(_coder_node, coder=coder, event_store=event_store))
+    workflow.add_node("tester", partial(_tester_node, tester=tester, event_store=event_store))
+    workflow.add_node("critic", partial(_critic_node, critic=critic, event_store=event_store))
+    workflow.add_node("coder_rebut", partial(_coder_rebut_node, coder=coder, event_store=event_store))
+    workflow.add_node("judge_rebuttal", partial(_judge_rebuttal_node, critic=critic, event_store=event_store))
+    workflow.add_node("increment", _increment_node)
+    workflow.add_node("complete", partial(_complete_node, event_store=event_store))
+    workflow.add_node("fail", partial(_fail_node, event_store=event_store))
 
-    # Build graph
-    graph = StateGraph(GraphState)
+    workflow.add_node("route", partial(_route_node, router=router, event_store=event_store))
+    workflow.add_node("product_analyst", partial(_product_analyst_node, agent=pa, event_store=event_store))
+    workflow.add_node("planner", partial(_planner_node, agent=planner, event_store=event_store))
+    workflow.add_node("architect", partial(_architect_node, agent=arch, event_store=event_store))
+    
+    workflow.add_node("ux", partial(_fanout_ux_node, agent=ux, event_store=event_store))
+    workflow.add_node("db", partial(_fanout_db_node, agent=db, event_store=event_store))
+    workflow.add_node("security", partial(_fanout_security_node, agent=sec, event_store=event_store))
+    workflow.add_node("researcher", partial(_fanout_researcher_node, agent=res, event_store=event_store))
+    workflow.add_node("coder_sdlc", partial(_fanout_coder_node, agent=coder, event_store=event_store))
+    
+    workflow.add_node("integrator", partial(_integrator_node, agent=integ, event_store=event_store))
+    
+    workflow.add_node("docs_arch", partial(_docs_arch_node, agent=docs, event_store=event_store))
+    workflow.add_node("docs_int", partial(_docs_int_node, agent=docs, event_store=event_store))
 
-    # Add nodes (using closures to inject dependencies)
-    graph.add_node("assign_task", lambda s: _assign_task_node(s, event_store))
-    graph.add_node("coder", lambda s: _coder_node(s, coder, event_store))
-    graph.add_node("tester", lambda s: _tester_node(s, tester, event_store))
-    graph.add_node("critic", lambda s: _critic_node(s, critic, event_store))
-    graph.add_node("coder_rebut", lambda s: _coder_rebut_node(s, coder, event_store))
-    graph.add_node("judge_rebuttal", lambda s: _judge_rebuttal_node(s, critic, event_store))
-    graph.add_node("complete", lambda s: _complete_node(s, event_store))
-    graph.add_node("fail", lambda s: _fail_node(s, event_store))
-    graph.add_node("increment", lambda s: {**s, "current_iteration": s["current_iteration"] + 1})
+    workflow.set_entry_point("assign_task")
+    
+    workflow.add_edge("assign_task", "route")
+    workflow.add_conditional_edges("route", _route_decision, {"fast": "coder", "full": "product_analyst"})
 
-    # Set entry point
-    graph.set_entry_point("assign_task")
-
-    # Linear edges
-    graph.add_edge("assign_task", "coder")
-    graph.add_edge("coder", "tester")
-    graph.add_edge("tester", "critic")
-
-    # After critic: PASS → complete, BLOCK under cap → should_rebut, cap → fail
-    graph.add_conditional_edges(
+    workflow.add_edge("coder", "tester")
+    workflow.add_edge("tester", "critic")
+    workflow.add_conditional_edges(
         "critic",
         _should_continue,
         {
             "complete": "complete",
+            "docs_int": "docs_int",
             "should_rebut": "coder_rebut",
-            "fail": "fail",
-        },
+            "fail": "fail"
+        }
     )
-
-    # After coder_rebut: if rebuttal was submitted → judge it, if not → increment
-    graph.add_edge("coder_rebut", "judge_rebuttal")
-
-    # After judge_rebuttal: accepted → complete, rejected → increment → coder
-    graph.add_conditional_edges(
+    workflow.add_conditional_edges(
+        "coder_rebut",
+        _should_rebut_router,
+        {
+            "try_rebut": "judge_rebuttal",
+            "no_rebut": "increment"
+        }
+    )
+    workflow.add_conditional_edges(
         "judge_rebuttal",
         _rebuttal_outcome_router,
         {
-            "accepted": "complete",
-            "rejected": "increment",
-        },
+            "accepted_fast": "complete",
+            "accepted_full": "docs_int",
+            "rejected": "increment"
+        }
     )
+    workflow.add_edge("increment", "coder")
+    
+    workflow.add_edge("complete", END)
+    workflow.add_edge("fail", END)
 
-    # Increment loops back to coder
-    graph.add_edge("increment", "coder")
+    workflow.add_edge("product_analyst", "planner")
+    workflow.add_edge("planner", "architect")
+    
+    workflow.add_edge("architect", "ux")
+    workflow.add_edge("architect", "db")
+    workflow.add_edge("architect", "security")
+    workflow.add_edge("architect", "researcher")
+    workflow.add_edge("architect", "coder_sdlc")
+    
+    workflow.add_edge(["ux", "db", "security", "researcher", "coder_sdlc"], "integrator")
+    
+    workflow.add_edge("integrator", "docs_arch")
+    workflow.add_edge("docs_arch", "tester")
+    
+    workflow.add_edge("docs_int", "complete")
 
-    # Terminal nodes
-    graph.add_edge("complete", END)
-    graph.add_edge("fail", END)
-
-    return graph
+    return workflow

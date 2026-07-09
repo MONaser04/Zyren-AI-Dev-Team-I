@@ -259,12 +259,12 @@ sequenceDiagram
 ## 📊 Phase 4 — Observability & the Full Agent Roster
 *Week 16–22*
 
-- [ ] **Observability (OpenTelemetry GenAI Conventions):** instrument with the OTel **GenAI semantic conventions** from the start (a 2026 standard emitted by LangChain/CrewAI/AutoGen). Emit `invoke_agent → chat → execute_tool` spans with `gen_ai.*` attributes (model, in/out tokens, finish reason) and metrics (`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`). Prompt-content capture **off by default** (privacy). View traces in **Langfuse/Phoenix** or any OTLP backend. Exposes silent failures, loops, and cost hotspots.
-- [ ] **Dynamic Routing Orchestrator (Decoupled):**
+- [x] **Observability (OpenTelemetry GenAI Conventions):** instrument with the OTel **GenAI semantic conventions** from the start (a 2026 standard emitted by LangChain/CrewAI/AutoGen). Emit `invoke_agent → chat → execute_tool` spans with `gen_ai.*` attributes (model, in/out tokens, finish reason) and metrics (`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`). Prompt-content capture **off by default** (privacy). View traces in **Langfuse/Phoenix** or any OTLP backend. Exposes silent failures, loops, and cost hotspots.
+- [x] **Dynamic Routing Orchestrator (Decoupled):**
   1. a fast **Semantic Router** on a small model classifies task complexity with **confidence-aware routing** — below threshold it falls back to the safe full pipeline;
   2. a deterministic **State Machine** (LangGraph) executes. Simple tasks take a **Fast Lane** (Coder + Grounded Critic); complex tasks take the full SDLC path.
-- [ ] **Concurrency (DAG Fan-out / Fan-in):** independent agents (Architect, UX, Security research) run in parallel; outputs converge (Fan-in) at the Integrator. Concurrent writes to the state log are made safe by optimistic locking. LangGraph does this natively.
-- [ ] **Milestone-Based Documentation:** the Docs agent runs **twice**, not every step — post-architecture (ADRs) and post-integration (READMEs, OpenAPI/Swagger, inline docs) from the final verified output only.
+- [x] **Concurrency (DAG Fan-out / Fan-in):** independent agents (Architect, UX, Security research) run in parallel; outputs converge (Fan-in) at the Integrator. Concurrent writes to the state log are made safe by optimistic locking. LangGraph does this natively.
+- [x] **Milestone-Based Documentation:** the Docs agent runs **twice**, not every step — post-architecture (ADRs) and post-integration (READMEs, OpenAPI/Swagger, inline docs) from the final verified output only.
 
 > [!NOTE]
 > **DevOps/SRE** and **Multi-tenancy** roles are addressed in [Non-Goals & Future Milestones](#out-of-scope).

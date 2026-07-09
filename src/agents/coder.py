@@ -8,6 +8,8 @@ On retry iterations, incorporates prior feedback from the Grounded Critic.
 
 from __future__ import annotations
 
+from observability.instrumentation import trace_agent_invocation
+
 from typing import TYPE_CHECKING
 
 from agents.base import BaseAgent
@@ -58,6 +60,8 @@ class CoderAgent(BaseAgent):
         super().__init__(agent_id=agent_id, role="coder", llm_client=llm_client)
         self.model = model
 
+    @trace_agent_invocation(agent_role="coder")
+
     def run(self, task: TaskAssignment) -> CodePatch:  # type: ignore[override]
         """Generate a code patch for the given task assignment.
 
@@ -103,6 +107,8 @@ class CoderAgent(BaseAgent):
             "Code generated: %d files, task=%s", len(patch.files), task.task_id
         )
         return patch
+
+    @trace_agent_invocation(agent_role="coder_rebut")
 
     def rebut(
         self,

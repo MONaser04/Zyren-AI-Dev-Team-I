@@ -168,7 +168,9 @@ class ToolExecutor:
             )
 
         try:
-            return handler(self._workspace, params, self._timeout)
+            from observability.instrumentation import trace_tool_execution
+            wrapped_handler = trace_tool_execution(tool_name, role)(handler)
+            return wrapped_handler(self._workspace, params, self._timeout)
         except Exception as exc:
             logger.exception("Tool execution error: %s", tool_name)
             return ToolResult.error_result(

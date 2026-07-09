@@ -1,6 +1,6 @@
 """
-LLM Client — Thin Wrapper Around LiteLLM (Phase 3 Upgraded)
-=============================================================
+LLM Client — Thin Wrapper Around LiteLLM (Phase 3 Upgraded + Phase 4 Instrumented)
+==================================================================================
 
 Provides a consistent interface for calling LLMs with:
 - Model alias resolution (frontier, fast, critic)
@@ -10,6 +10,7 @@ Provides a consistent interface for calling LLMs with:
 - Circuit breaker pattern (fail-fast on budget exceeded)
 - Fallback chains on repeated failures
 - Complexity-based routing (cheap for simple, frontier for hard)
+- OpenTelemetry instrumentation (Phase 4): chat spans + token metrics
 
 READ Phase 3 deliverable:
   'Route every model call through a self-hosted LiteLLM proxy.'
@@ -29,6 +30,7 @@ import litellm
 from pydantic import BaseModel
 
 from gateway.cost_tracker import BudgetExceededError, CostTracker, UsageSnapshot
+from observability import trace_chat
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,7 @@ class CircuitBreakerOpenError(Exception):
 
 
 # ============================================================
-# LLM Client (Phase 3 Upgraded)
+# LLM Client (Phase 3 Upgraded + Phase 4 Instrumented)
 # ============================================================
 
 
@@ -69,6 +71,9 @@ class LLMClient:
     - Fallback chains with cooldown on 429/5xx
     - Circuit breaker (fail-fast on budget exceeded)
     - Jitter added to exponential backoff
+
+    Phase 4 additions:
+    - OpenTelemetry instrumentation via trace_chat decorator
     """
 
     def __init__(
@@ -137,6 +142,7 @@ class LLMClient:
     # Public API — complete_text / complete_structured
     # ----------------------------------------------------------
 
+    @trace_chat("frontier")
     def complete_text(
         self,
         model: str,
@@ -175,6 +181,7 @@ class LLMClient:
         content: str = response.choices[0].message.content or ""
         return content
 
+    @trace_chat("frontier")
     def complete_structured(
         self,
         model: str,
