@@ -1,6 +1,12 @@
-# Gateway — LiteLLM client wrapper
-"""Gateway module: LiteLLM client wrapper with routing and cost caps."""
+"""Gateway module — LLM client, cost tracking, circuit breakers."""
 
-from gateway.llm_client import LLMClient
+from gateway.cost_tracker import BudgetExceededError, CostTracker, UsageSnapshot
+from gateway.llm_client import CircuitBreakerOpenError, LLMClient
 
-__all__ = ["LLMClient"]
+__all__ = [
+    "LLMClient",
+    "CostTracker",
+    "UsageSnapshot",
+    "BudgetExceededError",
+    "CircuitBreakerOpenError",
+]
