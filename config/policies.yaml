@@ -1,0 +1,95 @@
+# ============================================================
+# AI Dev-Team — Tool Permission Matrix (Default-Deny)
+# ============================================================
+# Every tool requires an explicit ALLOW for each agent role.
+# If a tool is not listed for a role, it is DENIED by default.
+#
+# Format:
+#   roles.<role_name>.allowed_tools: [list of tool names]
+#   roles.<role_name>.denied_tools:  [explicit denials, for documentation]
+#
+# This file is a skeleton — populate as tools are registered in Phase 3.
+# ============================================================
+
+default_policy: deny
+
+roles:
+  orchestrator:
+    description: "Router + deterministic state machine"
+    allowed_tools:
+      - state.read
+      - state.write
+    denied_tools:
+      - filesystem.write
+      - shell.execute
+      - db.destructive
+
+  coder:
+    description: "Core code producer"
+    allowed_tools:
+      - filesystem.read
+      - filesystem.write
+      - git.read
+      - git.write
+      - shell.execute_sandboxed
+    denied_tools:
+      - db.destructive
+      - deploy.production
+
+  tester:
+    description: "Runs tests, types, lint — external signal generator"
+    allowed_tools:
+      - filesystem.read
+      - shell.execute_sandboxed
+      - git.read
+    denied_tools:
+      - filesystem.write
+      - db.destructive
+      - deploy.production
+
+  critic:
+    description: "Grounded Critic / Reviewer — interprets verification reports"
+    allowed_tools:
+      - state.read
+      - filesystem.read
+    denied_tools:
+      - filesystem.write
+      - shell.execute
+      - db.destructive
+
+  architect:
+    description: "System design, ADRs"
+    allowed_tools:
+      - filesystem.read
+      - state.read
+    denied_tools:
+      - shell.execute
+      - db.destructive
+
+  security:
+    description: "OWASP-aligned review + SAST"
+    allowed_tools:
+      - filesystem.read
+      - shell.execute_sandboxed
+      - git.read
+    denied_tools:
+      - filesystem.write
+      - deploy.production
+
+  supervisor:
+    description: "Escalation tie-breaker"
+    allowed_tools:
+      - state.read
+      - state.write
+    denied_tools:
+      - shell.execute
+      - db.destructive
+
+  liaison:
+    description: "Human interface — translates state to operator"
+    allowed_tools:
+      - state.read
+      - notifications.send
+    denied_tools:
+      - filesystem.write
+      - shell.execute

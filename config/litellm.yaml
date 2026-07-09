@@ -1,0 +1,70 @@
+# ============================================================
+# AI Dev-Team — LiteLLM Configuration
+# ============================================================
+# Model registry, routing rules, fallback chains, and cost caps.
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+# ============================================================
+
+model_list:
+  # ----------------------------------------------------------
+  # Primary: High-capability frontier model
+  # ----------------------------------------------------------
+  - model_name: "frontier"
+    litellm_params:
+      model: "openai/gpt-4o"            # Change to your preferred frontier model
+      api_key: "os.environ/OPENAI_API_KEY"
+      max_tokens: 8192
+      temperature: 0.0
+
+  # ----------------------------------------------------------
+  # Fast: Cheap model for simple tasks (routing, classification)
+  # ----------------------------------------------------------
+  - model_name: "fast"
+    litellm_params:
+      model: "openai/gpt-4o-mini"       # Change to your preferred fast model
+      api_key: "os.environ/OPENAI_API_KEY"
+      max_tokens: 4096
+      temperature: 0.0
+
+  # ----------------------------------------------------------
+  # Critic: Different model family (reduces shared blind spots)
+  # ----------------------------------------------------------
+  - model_name: "critic"
+    litellm_params:
+      model: "anthropic/claude-sonnet-4-20250514"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+      max_tokens: 8192
+      temperature: 0.0
+
+  # ----------------------------------------------------------
+  # Fallback: Alternative provider
+  # ----------------------------------------------------------
+  - model_name: "fallback"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
+      max_tokens: 8192
+      temperature: 0.0
+
+# ============================================================
+# Router Settings
+# ============================================================
+router_settings:
+  routing_strategy: "simple-shuffle"       # Options: simple-shuffle, least-busy, latency-based-routing
+  num_retries: 3
+  retry_after: 5                           # seconds between retries
+  timeout: 120                             # seconds per request
+  allowed_fails: 3                         # fails before cooldown
+  cooldown_time: 60                        # seconds to cool down a failing deployment
+
+# ============================================================
+# General Settings
+# ============================================================
+general_settings:
+  master_key: "os.environ/LITELLM_MASTER_KEY"
+  max_budget: 50.0                         # Global budget cap (USD) — adjust as needed
+  budget_duration: "30d"                   # Budget resets every 30 days
+
+litellm_settings:
+  drop_params: true                        # Drop unsupported params silently
+  set_verbose: false                       # Set to true for debugging

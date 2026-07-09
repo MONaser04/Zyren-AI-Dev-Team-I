@@ -1,0 +1,98 @@
+# ============================================================
+# AI Dev-Team — Docker Compose (Local Development)
+# ============================================================
+# Services:
+#   1. Postgres 16    — Event-sourced state store
+#   2. Qdrant         — Vector store (episodic memory)
+#   3. LiteLLM Proxy  — Model gateway (OpenAI-compatible)
+#   4. Jaeger          — OTLP backend (traces + UI)
+# ============================================================
+# Usage:
+#   docker compose up -d      # Start all services
+#   docker compose down       # Stop all services
+#   docker compose logs -f    # Tail logs
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # Postgres — Event-Sourced State Store
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: aidev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aidev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aidev_local}
+      POSTGRES_DB: ${POSTGRES_DB:-aidev_state}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aidev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # Qdrant — Vector Store (Episodic / Semantic Memory)
+  # ----------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: aidev-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_REST_PORT:-6333}:6333"     # REST API
+      - "${QDRANT_GRPC_PORT:-6334}:6334"     # gRPC API
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/readyz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # LiteLLM Proxy — Model Gateway
+  # ----------------------------------------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: aidev-litellm
+    restart: unless-stopped
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    volumes:
+      - ./config/litellm.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-local-dev-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ----------------------------------------------------------
+  # Jaeger — OTLP Backend (Traces + UI)
+  # ----------------------------------------------------------
+  jaeger:
+    image: jaegertracing/jaeger:latest
+    container_name: aidev-jaeger
+    restart: unless-stopped
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"     # Jaeger UI
+      - "${OTLP_GRPC_PORT:-4317}:4317"      # OTLP gRPC
+      - "${OTLP_HTTP_PORT:-4318}:4318"      # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+# ============================================================
+# Named Volumes
+# ============================================================
+volumes:
+  pgdata:
+    driver: local
+  qdrant_data:
+    driver: local

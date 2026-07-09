@@ -1,0 +1,120 @@
+[project]
+name = "ai-dev-team"
+version = "0.1.0"
+description = "A Multi-Agent SDLC Engine — self-hosted AI dev team with grounded verification"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+
+dependencies = [
+    # --- Orchestration Engine ---
+    "langgraph>=0.4,<1.0",
+    "langchain-core>=0.3,<1.0",
+
+    # --- Model Gateway ---
+    "litellm>=1.60,<2.0",
+
+    # --- Type-Safe Contracts ---
+    "pydantic>=2.0,<3.0",
+
+    # --- Configuration ---
+    "python-dotenv>=1.0,<2.0",
+
+    # --- Database (SQLite for v0, Postgres for v1) ---
+    "psycopg[binary]>=3.2,<4.0",
+
+    # --- Async Support ---
+    "httpx>=0.28,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # --- Testing ---
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=1.0,<2.0",
+    "pytest-cov>=6.0,<7.0",
+
+    # --- Linting & Formatting ---
+    "ruff>=0.12,<1.0",
+
+    # --- Type Checking ---
+    "mypy>=1.15,<2.0",
+
+    # --- Git Hooks ---
+    "pre-commit>=4.0,<5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/orchestrator",
+    "src/agents",
+    "src/contracts",
+    "src/state",
+    "src/memory",
+    "src/tools",
+    "src/verification",
+    "src/resilience",
+    "src/observability",
+    "src/gateway",
+]
+
+# ============================================================
+# Tool Configuration
+# ============================================================
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=1.0,<2.0",
+    "pytest-cov>=6.0,<7.0",
+    "ruff>=0.12,<1.0",
+    "mypy>=1.15,<2.0",
+    "pre-commit>=4.0,<5.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "TCH",  # type-checking imports
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+mypy_path = "src"
+packages = ["src"]
+
+[[tool.mypy.overrides]]
+module = [
+    "langgraph.*",
+    "langchain_core.*",
+    "litellm.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
