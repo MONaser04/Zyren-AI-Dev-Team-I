@@ -11,7 +11,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from agents.base import BaseAgent
-from contracts.schemas import CodePatch, FileContent, TaskAssignment
+from contracts.schemas import (
+    CodePatch,
+    FileContent,
+    RebuttalRequest,
+    ReviewDecision,
+    TaskAssignment,
+    VerificationReport,
+)
 
 if TYPE_CHECKING:
     from gateway.llm_client import LLMClient
@@ -97,6 +104,56 @@ class CoderAgent(BaseAgent):
         )
         return patch
 
+    def rebut(
+        self,
+        decision: ReviewDecision,
+        report: VerificationReport,
+    ) -> RebuttalRequest | None:
+        """Generate a rebuttal against a BLOCK decision.
+
+        Per README line 232: the Coder may reject feedback **once per
+        iteration** with a logical justification.
+
+        Returns None if the Coder agrees with the feedback (no rebuttal).
+        """
+        self.logger.info(
+            "Considering rebuttal: task=%s, iteration=%d, issues=%d",
+            decision.task_id,
+            decision.iteration,
+            len(decision.issues),
+        )
+
+        user_prompt = self._build_rebuttal_prompt(decision, report)
+
+        messages = [
+            {"role": "system", "content": REBUTTAL_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        result = self.llm_client.complete_structured(
+            model=self.model,
+            messages=messages,
+            response_model=_RebuttalResponse,
+        )
+
+        if not result.should_rebut:
+            self.logger.info("Coder accepts feedback, no rebuttal.")
+            return None
+
+        rebuttal = RebuttalRequest(
+            task_id=decision.task_id,
+            workflow_id=decision.workflow_id,
+            iteration=decision.iteration,
+            justification=result.justification,
+            disputed_issues=result.disputed_issues,
+        )
+
+        self.logger.info(
+            "Rebuttal generated: %d disputed issues",
+            len(rebuttal.disputed_issues),
+        )
+        return rebuttal
+
     def _build_prompt(self, task: TaskAssignment) -> str:
         """Build the user prompt for the Coder."""
         parts = [
@@ -118,9 +175,52 @@ class CoderAgent(BaseAgent):
 
         return "\n".join(parts)
 
+    @staticmethod
+    def _build_rebuttal_prompt(
+        decision: ReviewDecision,
+        report: VerificationReport,
+    ) -> str:
+        """Build the prompt for the Coder to consider a rebuttal."""
+        issues_text = "\n".join(
+            f"- [{i.severity.value}] {i.description} (source: {i.source})"
+            for i in decision.issues
+        ) or "No specific issues listed."
+
+        return (
+            f"## Critic's BLOCK Decision\n"
+            f"Justification: {decision.justification}\n\n"
+            f"## Issues Raised\n{issues_text}\n\n"
+            f"## Feedback\n{decision.feedback_for_coder}\n\n"
+            f"## Verification Facts\n"
+            f"- Tests passed: {report.tests_passed}\n"
+            f"- Type check: {report.type_check_passed}\n"
+            f"- Lint: {report.lint_passed}\n"
+            f"- Security: {report.security_passed}\n\n"
+            f"## Your Task\n"
+            f"Decide if you should rebut any of these issues. "
+            f"Only rebut if you have strong evidence the feedback is wrong."
+        )
+
 
 # ============================================================
-# Internal response model (not an inter-agent contract)
+# System Prompt for Rebuttal
+# ============================================================
+
+REBUTTAL_SYSTEM_PROMPT = """\
+You are an expert software engineer reviewing feedback from a code reviewer.
+
+Decide whether to REBUT any of the reviewer's issues. Only rebut if:
+1. A failing test asserts WRONG behavior (cite the spec).
+2. A lint/type error is a FALSE POSITIVE (explain why).
+3. The feedback misunderstands the requirements.
+
+Do NOT rebut if the issues are legitimate. Be honest.
+Respond ONLY with the structured JSON output.
+"""
+
+
+# ============================================================
+# Internal response models (not inter-agent contracts)
 # ============================================================
 
 from pydantic import BaseModel, Field  # noqa: E402
@@ -143,4 +243,20 @@ class _CoderResponse(BaseModel):
     explanation: str = Field(
         default="",
         description="Brief explanation of the approach.",
+    )
+
+
+class _RebuttalResponse(BaseModel):
+    """Structured response for rebuttal consideration."""
+
+    should_rebut: bool = Field(
+        description="True if the Coder wants to rebut.",
+    )
+    justification: str = Field(
+        default="I accept the feedback.",
+        description="Why the Coder is rebutting (or accepting).",
+    )
+    disputed_issues: list[str] = Field(
+        default_factory=list,
+        description="Descriptions of issues being disputed.",
     )

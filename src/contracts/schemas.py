@@ -43,6 +43,26 @@ class Severity(StrEnum):
     CRITICAL = "critical"
 
 
+class EscalationLevel(StrEnum):
+    """Critic escalation ladder — tone intensifies per iteration.
+
+    Per README line 231:
+    soft (iter 1) → firm (iter 2) → hard block (iter 3) → escalate to Supervisor.
+    """
+
+    SOFT = "soft"
+    FIRM = "firm"
+    HARD_BLOCK = "hard_block"
+    ESCALATE = "escalate"
+
+
+class RebuttalOutcome(StrEnum):
+    """Result of the Critic judging a Coder's rebuttal."""
+
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 class WorkflowStatus(StrEnum):
     """Lifecycle status of a workflow."""
 
@@ -209,6 +229,26 @@ class VerificationReport(BaseContract):
         description="Raw stdout/stderr from execution.",
     )
 
+    # --- Phase 2: Security scanning ---
+    security_passed: bool = Field(
+        default=True,
+        description="Whether security scanning passed (bandit).",
+    )
+    security_output: str = Field(
+        default="",
+        description="Raw security scanner output.",
+    )
+
+    # --- Phase 2: Coverage tracking ---
+    coverage_percent: float | None = Field(
+        default=None,
+        description="Test coverage percentage (0.0–100.0).",
+    )
+    coverage_delta: float | None = Field(
+        default=None,
+        description="Coverage change from prior iteration.",
+    )
+
     @property
     def all_clean(self) -> bool:
         """True if every verification signal is clean."""
@@ -217,6 +257,7 @@ class VerificationReport(BaseContract):
             and self.type_check_passed
             and self.lint_passed
             and self.execution_passed
+            and self.security_passed
         )
 
 
@@ -266,6 +307,10 @@ class ReviewDecision(BaseContract):
         default="",
         description="Structured feedback for the Coder's next iteration.",
     )
+    escalation_level: EscalationLevel = Field(
+        default=EscalationLevel.SOFT,
+        description="Escalation tone level for this review.",
+    )
 
     @model_validator(mode="after")
     def _validate_block_has_issues(self) -> ReviewDecision:
@@ -274,6 +319,49 @@ class ReviewDecision(BaseContract):
             msg = "BLOCK verdict must include issues or feedback_for_coder."
             raise ValueError(msg)
         return self
+
+
+# ============================================================
+# RebuttalRequest — Coder's Right of Rebuttal (Phase 2)
+# ============================================================
+
+
+class RebuttalRequest(BaseContract):
+    """Coder's right of rebuttal against a BLOCK decision.
+
+    Per README line 232: the Coder may reject feedback **once per iteration**
+    with a logical justification. If accepted, code passes; if deadlock
+    persists, escalate.
+    """
+
+    task_id: str = Field(description="Task being rebutted.")
+    workflow_id: str = Field(description="Parent workflow identifier.")
+    iteration: int = Field(ge=1, description="Iteration number.")
+    original_verdict: Verdict = Field(
+        default=Verdict.BLOCK,
+        description="The verdict being challenged (always BLOCK).",
+    )
+    justification: str = Field(
+        min_length=10,
+        description="Coder's justification for why the feedback is wrong.",
+    )
+    disputed_issues: list[str] = Field(
+        default_factory=list,
+        description="Descriptions of the specific issues being disputed.",
+    )
+
+
+class RebuttalJudgment(BaseContract):
+    """Critic's judgment on a Coder's rebuttal."""
+
+    task_id: str = Field(description="Task being judged.")
+    workflow_id: str = Field(description="Parent workflow identifier.")
+    iteration: int = Field(ge=1, description="Iteration number.")
+    outcome: RebuttalOutcome = Field(description="ACCEPTED or REJECTED.")
+    reasoning: str = Field(
+        min_length=1,
+        description="Why the rebuttal was accepted or rejected.",
+    )
 
 
 # ============================================================
@@ -314,6 +402,14 @@ class WorkflowState(BaseModel):
     reviews: list[dict[str, Any]] = Field(
         default_factory=list,
         description="History of review decisions (serialized).",
+    )
+    rebuttals: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="History of rebuttals (serialized).",
+    )
+    rebuttal_judgments: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="History of rebuttal judgments (serialized).",
     )
     final_verdict: Verdict | None = Field(
         default=None,

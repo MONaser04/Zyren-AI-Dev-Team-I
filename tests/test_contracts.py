@@ -15,7 +15,11 @@ from pydantic import ValidationError
 
 from contracts.schemas import (
     CodePatch,
+    EscalationLevel,
     FileContent,
+    RebuttalJudgment,
+    RebuttalOutcome,
+    RebuttalRequest,
     ReviewDecision,
     ReviewIssue,
     Severity,
@@ -216,3 +220,141 @@ class TestWorkflowState:
             final_verdict=Verdict.PASS,
         )
         assert state.status == WorkflowStatus.PASSED
+
+
+# ============================================================
+# Phase 2 — New Contract Tests
+# ============================================================
+
+
+class TestEscalationLevel:
+    """Test the EscalationLevel enum."""
+
+    def test_all_levels(self) -> None:
+        levels = list(EscalationLevel)
+        assert len(levels) == 4
+        assert EscalationLevel.SOFT in levels
+        assert EscalationLevel.ESCALATE in levels
+
+    def test_review_with_escalation(self) -> None:
+        decision = ReviewDecision(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=3,
+            verdict=Verdict.PASS,
+            justification="All signals clean after 3 iterations.",
+            escalation_level=EscalationLevel.HARD_BLOCK,
+        )
+        assert decision.escalation_level == EscalationLevel.HARD_BLOCK
+
+
+class TestRebuttalRequest:
+    """Test the RebuttalRequest contract."""
+
+    def test_valid_rebuttal(self) -> None:
+        rebuttal = RebuttalRequest(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=1,
+            justification="The failing test asserts wrong behavior per the spec.",
+            disputed_issues=["Test test_foo expects 42 but spec says 43"],
+        )
+        assert rebuttal.original_verdict == Verdict.BLOCK
+        assert len(rebuttal.disputed_issues) == 1
+
+    def test_short_justification_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            RebuttalRequest(
+                task_id="t-001",
+                workflow_id="wf-001",
+                iteration=1,
+                justification="no",  # Too short (min_length=10)
+            )
+
+
+class TestRebuttalJudgment:
+    """Test the RebuttalJudgment contract."""
+
+    def test_accepted(self) -> None:
+        judgment = RebuttalJudgment(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=1,
+            outcome=RebuttalOutcome.ACCEPTED,
+            reasoning="The coder correctly identified a false positive.",
+        )
+        assert judgment.outcome == RebuttalOutcome.ACCEPTED
+
+    def test_rejected(self) -> None:
+        judgment = RebuttalJudgment(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=1,
+            outcome=RebuttalOutcome.REJECTED,
+            reasoning="The issues are legitimate.",
+        )
+        assert judgment.outcome == RebuttalOutcome.REJECTED
+
+
+class TestVerificationReportPhase2:
+    """Test Phase 2 enhancements to VerificationReport."""
+
+    def test_security_fields(self) -> None:
+        report = VerificationReport(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=1,
+            tests_passed=True,
+            type_check_passed=True,
+            lint_passed=True,
+            security_passed=False,
+            security_output="2 security issues found.",
+        )
+        assert not report.security_passed
+        assert not report.all_clean  # security_passed is now part of all_clean
+
+    def test_coverage_fields(self) -> None:
+        report = VerificationReport(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=2,
+            tests_passed=True,
+            type_check_passed=True,
+            lint_passed=True,
+            coverage_percent=85.0,
+            coverage_delta=15.0,
+        )
+        assert report.coverage_percent == 85.0
+        assert report.coverage_delta == 15.0
+        assert report.all_clean
+
+    def test_all_clean_includes_security(self) -> None:
+        report = VerificationReport(
+            task_id="t-001",
+            workflow_id="wf-001",
+            iteration=1,
+            tests_passed=True,
+            type_check_passed=True,
+            lint_passed=True,
+            execution_passed=True,
+            security_passed=True,
+        )
+        assert report.all_clean
+
+
+class TestWorkflowStatePhase2:
+    """Test Phase 2 WorkflowState enhancements."""
+
+    def test_rebuttal_fields_default(self) -> None:
+        state = WorkflowState(workflow_id="wf-001")
+        assert state.rebuttals == []
+        assert state.rebuttal_judgments == []
+
+    def test_with_rebuttals(self) -> None:
+        state = WorkflowState(
+            workflow_id="wf-001",
+            rebuttals=[{"justification": "test"}],
+            rebuttal_judgments=[{"outcome": "rejected"}],
+        )
+        assert len(state.rebuttals) == 1
+        assert len(state.rebuttal_judgments) == 1

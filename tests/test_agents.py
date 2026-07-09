@@ -9,7 +9,7 @@ Validates:
 
 from __future__ import annotations
 
-from agents.tester import TesterAgent
+from agents.tester import TesterAgent as RealTesterAgent
 from contracts.schemas import CodePatch, FileContent, VerificationReport
 
 
@@ -18,7 +18,7 @@ class TestTesterAgent:
 
     def test_good_code_passes_lint(self) -> None:
         """Code that is syntactically correct should pass basic checks."""
-        tester = TesterAgent()
+        tester = RealTesterAgent()
         patch = CodePatch(
             task_id="t-001",
             workflow_id="wf-001",
@@ -44,7 +44,7 @@ class TestTesterAgent:
 
     def test_bad_syntax_fails_execution(self) -> None:
         """Code with syntax errors should fail execution check."""
-        tester = TesterAgent()
+        tester = RealTesterAgent()
         patch = CodePatch(
             task_id="t-002",
             workflow_id="wf-001",
@@ -63,7 +63,7 @@ class TestTesterAgent:
 
     def test_report_has_all_fields(self) -> None:
         """Verification report must have all required fields."""
-        tester = TesterAgent()
+        tester = RealTesterAgent()
         patch = CodePatch(
             task_id="t-003",
             workflow_id="wf-001",

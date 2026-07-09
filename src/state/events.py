@@ -43,6 +43,10 @@ class EventType(StrEnum):
     # Iteration
     ITERATION_STARTED = "iteration_started"
 
+    # Phase 2: Rebuttal flow
+    REBUTTAL_SUBMITTED = "rebuttal_submitted"
+    REBUTTAL_JUDGED = "rebuttal_judged"
+
 
 # ============================================================
 # Event Model
@@ -263,6 +267,48 @@ def workflow_failed_event(
         event_type=EventType.WORKFLOW_FAILED,
         version=version,
         payload={"reason": reason},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+
+def rebuttal_submitted_event(
+    *,
+    workflow_id: str,
+    version: int,
+    rebuttal_data: dict[str, Any],
+    iteration: int,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    """Create a REBUTTAL_SUBMITTED event."""
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="coder",
+        event_type=EventType.REBUTTAL_SUBMITTED,
+        version=version,
+        payload={"rebuttal": rebuttal_data, "iteration": iteration},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+
+def rebuttal_judged_event(
+    *,
+    workflow_id: str,
+    version: int,
+    judgment_data: dict[str, Any],
+    iteration: int,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    """Create a REBUTTAL_JUDGED event."""
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="critic",
+        event_type=EventType.REBUTTAL_JUDGED,
+        version=version,
+        payload={"judgment": judgment_data, "iteration": iteration},
         causation_id=causation_id,
         correlation_id=correlation_id,
     )

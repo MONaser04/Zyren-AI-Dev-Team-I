@@ -1,13 +1,17 @@
 """
-Orchestrator Graph — LangGraph Minimal Feedback Loop
-======================================================
+Orchestrator Graph — LangGraph Feedback Loop with Rebuttal
+=============================================================
 
-Implements the evaluator-optimizer pattern as a LangGraph StateGraph:
+Phase 2 upgrade: adds the Agentic Pushback (rebuttal) edge:
 
-    START → assign_task → coder → tester → critic → [decision]
-                                                         ├─ PASS → complete
-                                                         └─ BLOCK → coder (loop)
-                                                              └─ cap → fail
+    START → assign_task → coder → tester → critic
+         ├─ PASS → complete
+         └─ BLOCK → should_rebut?
+              ├─ yes → coder_rebut → judge
+              │    ├─ ACCEPTED → complete
+              │    └─ REJECTED → increment → coder
+              └─ no → increment → coder
+                   └─ cap → fail
 
 Every transition emits an event to the Event Store.
 """
@@ -25,6 +29,8 @@ from agents.critic import CriticAgent
 from agents.tester import TesterAgent
 from contracts.schemas import (
     CodePatch,
+    RebuttalOutcome,
+    RebuttalRequest,
     ReviewDecision,
     TaskAssignment,
     Verdict,
@@ -32,6 +38,8 @@ from contracts.schemas import (
 )
 from state.events import (
     code_submitted_event,
+    rebuttal_judged_event,
+    rebuttal_submitted_event,
     review_decided_event,
     task_created_event,
     verification_completed_event,
@@ -78,10 +86,25 @@ class GraphState(TypedDict, total=False):
     feedback: str
     error: str
 
-    # Event tracking
+    # Phase 2: Rebuttal tracking
+    rebuttal_used: bool
+    rebuttal_request: dict[str, Any]
+    rebuttal_outcome: str
+
+    # Event versioning
     event_version: int
-    correlation_id: str
     last_event_id: str
+    correlation_id: str
+
+
+# ============================================================
+# Node Helpers
+# ============================================================
+
+
+def _next_version(state: GraphState) -> int:
+    """Get the next event version from state."""
+    return state.get("event_version", 0) + 1
 
 
 # ============================================================
@@ -90,23 +113,23 @@ class GraphState(TypedDict, total=False):
 
 
 def _assign_task_node(
-    state: GraphState,
-    event_store: EventStore,
-) -> GraphState:
-    """Create the initial task assignment and emit TASK_CREATED event."""
-    workflow_id = state["workflow_id"]
-    version = state.get("event_version", 0) + 1
+    state: GraphState, event_store: EventStore
+) -> dict[str, Any]:
+    """Create the task and emit the first event."""
+    workflow_id = state.get("workflow_id", uuid.uuid4().hex[:12])
+    task_desc = state.get("task_description", "")
+    max_iter = state.get("max_iterations", 3)
 
     event = task_created_event(
         workflow_id=workflow_id,
-        task_description=state["task_description"],
-        max_iterations=state.get("max_iterations", 3),
+        task_description=task_desc,
+        max_iterations=max_iter,
     )
     event_store.append(event)
 
     task = TaskAssignment(
         workflow_id=workflow_id,
-        description=state["task_description"],
+        description=task_desc,
         language=state.get("language", "python"),
         constraints=state.get("constraints", []),
         iteration=1,
@@ -114,42 +137,34 @@ def _assign_task_node(
 
     return {
         **state,
+        "workflow_id": workflow_id,
         "current_iteration": 1,
         "task_assignment": task.model_dump(),
-        "event_version": version,
-        "correlation_id": event.correlation_id or event.event_id,
+        "event_version": event.version,
         "last_event_id": event.event_id,
+        "correlation_id": event.correlation_id or event.event_id,
+        "rebuttal_used": False,
     }
 
 
 def _coder_node(
-    state: GraphState,
-    coder: CoderAgent,
-    event_store: EventStore,
-) -> GraphState:
-    """Run the Coder agent and emit CODE_SUBMITTED event."""
+    state: GraphState, coder: CoderAgent, event_store: EventStore
+) -> dict[str, Any]:
+    """Run the Coder agent and emit a CODE_SUBMITTED event."""
+    task_data = state["task_assignment"]
     iteration = state["current_iteration"]
-    workflow_id = state["workflow_id"]
 
-    # Build task assignment with feedback if this is a retry
-    feedback = state.get("feedback")
-    task = TaskAssignment(
-        workflow_id=workflow_id,
-        task_id=state["task_assignment"].get("task_id", uuid.uuid4().hex[:12]),
-        description=state["task_description"],
-        language=state.get("language", "python"),
-        constraints=state.get("constraints", []),
-        iteration=iteration,
-        prior_feedback=feedback if iteration > 1 else None,
-    )
+    # On retry, inject feedback from the Critic
+    feedback = state.get("feedback", "")
+    if feedback and iteration > 1:
+        task_data = {**task_data, "iteration": iteration, "prior_feedback": feedback}
 
-    # Run coder
-    patch: CodePatch = coder.run(task=task)
+    task = TaskAssignment.model_validate(task_data)
+    patch = coder.run(task)
 
-    # Emit event
-    version = state.get("event_version", 0) + 1
+    version = _next_version(state)
     event = code_submitted_event(
-        workflow_id=workflow_id,
+        workflow_id=state["workflow_id"],
         version=version,
         patch_data=patch.model_dump(mode="json"),
         iteration=iteration,
@@ -161,28 +176,22 @@ def _coder_node(
     return {
         **state,
         "code_patch": patch.model_dump(),
-        "task_assignment": task.model_dump(),
         "event_version": version,
         "last_event_id": event.event_id,
+        "rebuttal_used": False,  # Reset per iteration
     }
 
 
 def _tester_node(
-    state: GraphState,
-    tester: TesterAgent,
-    event_store: EventStore,
-) -> GraphState:
-    """Run the Tester agent and emit VERIFICATION_COMPLETED event."""
-    workflow_id = state["workflow_id"]
+    state: GraphState, tester: TesterAgent, event_store: EventStore
+) -> dict[str, Any]:
+    """Run the Tester agent and emit a VERIFICATION_COMPLETED event."""
     patch = CodePatch.model_validate(state["code_patch"])
+    report = tester.run(patch)
 
-    # Run tester
-    report: VerificationReport = tester.run(patch=patch)
-
-    # Emit event
-    version = state.get("event_version", 0) + 1
+    version = _next_version(state)
     event = verification_completed_event(
-        workflow_id=workflow_id,
+        workflow_id=state["workflow_id"],
         version=version,
         report_data=report.model_dump(mode="json"),
         iteration=state["current_iteration"],
@@ -200,22 +209,16 @@ def _tester_node(
 
 
 def _critic_node(
-    state: GraphState,
-    critic: CriticAgent,
-    event_store: EventStore,
-) -> GraphState:
-    """Run the Grounded Critic and emit REVIEW_DECIDED event."""
-    workflow_id = state["workflow_id"]
+    state: GraphState, critic: CriticAgent, event_store: EventStore
+) -> dict[str, Any]:
+    """Run the Critic agent and emit a REVIEW_DECIDED event."""
     patch = CodePatch.model_validate(state["code_patch"])
     report = VerificationReport.model_validate(state["verification_report"])
+    decision = critic.run(patch, report)
 
-    # Run critic
-    decision: ReviewDecision = critic.run(patch=patch, report=report)
-
-    # Emit event
-    version = state.get("event_version", 0) + 1
+    version = _next_version(state)
     event = review_decided_event(
-        workflow_id=workflow_id,
+        workflow_id=state["workflow_id"],
         version=version,
         decision_data=decision.model_dump(mode="json"),
         iteration=state["current_iteration"],
@@ -226,7 +229,7 @@ def _critic_node(
 
     return {
         **state,
-        "review_decision": decision.model_dump(mode="json"),
+        "review_decision": decision.model_dump(),
         "verdict": decision.verdict.value,
         "feedback": decision.feedback_for_coder,
         "event_version": version,
@@ -234,12 +237,87 @@ def _critic_node(
     }
 
 
+def _coder_rebut_node(
+    state: GraphState, coder: CoderAgent, event_store: EventStore
+) -> dict[str, Any]:
+    """Coder considers and optionally submits a rebuttal."""
+    decision = ReviewDecision.model_validate(state["review_decision"])
+    report = VerificationReport.model_validate(state["verification_report"])
+
+    rebuttal = coder.rebut(decision, report)
+
+    if rebuttal is None:
+        # Coder accepts feedback, no rebuttal
+        return {
+            **state,
+            "rebuttal_used": True,
+            "rebuttal_request": {},
+            "rebuttal_outcome": "",
+        }
+
+    version = _next_version(state)
+    event = rebuttal_submitted_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        rebuttal_data=rebuttal.model_dump(mode="json"),
+        iteration=state["current_iteration"],
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "rebuttal_used": True,
+        "rebuttal_request": rebuttal.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+
+def _judge_rebuttal_node(
+    state: GraphState, critic: CriticAgent, event_store: EventStore
+) -> dict[str, Any]:
+    """Critic judges the Coder's rebuttal."""
+    rebuttal_data = state.get("rebuttal_request", {})
+
+    # No rebuttal was submitted
+    if not rebuttal_data:
+        return {
+            **state,
+            "rebuttal_outcome": "no_rebuttal",
+        }
+
+    rebuttal = RebuttalRequest.model_validate(rebuttal_data)
+    decision = ReviewDecision.model_validate(state["review_decision"])
+    report = VerificationReport.model_validate(state["verification_report"])
+
+    judgment = critic.judge_rebuttal(rebuttal, decision, report)
+
+    version = _next_version(state)
+    event = rebuttal_judged_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        judgment_data=judgment.model_dump(mode="json"),
+        iteration=state["current_iteration"],
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "rebuttal_outcome": judgment.outcome.value,
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
+
+
 def _complete_node(
-    state: GraphState,
-    event_store: EventStore,
-) -> GraphState:
-    """Mark workflow as completed and emit WORKFLOW_COMPLETED event."""
-    version = state.get("event_version", 0) + 1
+    state: GraphState, event_store: EventStore
+) -> dict[str, Any]:
+    """Mark the workflow as completed."""
+    version = _next_version(state)
     event = workflow_completed_event(
         workflow_id=state["workflow_id"],
         version=version,
@@ -248,17 +326,24 @@ def _complete_node(
     )
     event_store.append(event)
 
-    logger.info("Workflow COMPLETED: %s", state["workflow_id"])
-    return {**state, "event_version": version, "last_event_id": event.event_id}
+    logger.info("Workflow PASSED: %s", state["workflow_id"])
+    return {
+        **state,
+        "verdict": Verdict.PASS.value,
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
 
 
 def _fail_node(
-    state: GraphState,
-    event_store: EventStore,
-) -> GraphState:
-    """Mark workflow as failed and emit WORKFLOW_FAILED event."""
-    version = state.get("event_version", 0) + 1
-    reason = f"Iteration cap reached ({state.get('max_iterations', 3)} iterations)"
+    state: GraphState, event_store: EventStore
+) -> dict[str, Any]:
+    """Mark the workflow as failed due to iteration cap."""
+    version = _next_version(state)
+    reason = (
+        f"Iteration cap ({state.get('max_iterations', 3)}) reached "
+        f"at iteration {state['current_iteration']}."
+    )
     event = workflow_failed_event(
         workflow_id=state["workflow_id"],
         version=version,
@@ -278,15 +363,16 @@ def _fail_node(
 
 
 # ============================================================
-# Decision Router
+# Decision Routers
 # ============================================================
 
 
 def _should_continue(state: GraphState) -> str:
-    """Route based on the Critic's verdict and iteration cap.
+    """Route after the Critic's verdict.
 
     Returns:
-        'complete' if PASS, 'retry' if BLOCK and under cap, 'fail' if cap reached.
+        'complete' if PASS, 'should_rebut' if BLOCK and under cap,
+        'fail' if cap reached.
     """
     verdict = state.get("verdict", "")
     if verdict == Verdict.PASS.value:
@@ -298,7 +384,40 @@ def _should_continue(state: GraphState) -> str:
     if current >= max_iter:
         return "fail"
 
-    return "retry"
+    # Under cap and BLOCK — check if rebuttal is available
+    return "should_rebut"
+
+
+def _should_rebut_router(state: GraphState) -> str:
+    """Decide whether to attempt a rebuttal.
+
+    Only rebut if:
+    - Rebuttal has not been used this iteration
+    - There are specific issues to dispute
+    """
+    if state.get("rebuttal_used", False):
+        return "no_rebut"
+
+    # Check if there are issues worth disputing
+    decision_data = state.get("review_decision", {})
+    issues = decision_data.get("issues", [])
+    if not issues:
+        return "no_rebut"
+
+    return "try_rebut"
+
+
+def _rebuttal_outcome_router(state: GraphState) -> str:
+    """Route after rebuttal judgment.
+
+    Returns:
+        'accepted' if rebuttal was accepted → PASS.
+        'rejected' if rejected or no rebuttal → retry loop.
+    """
+    outcome = state.get("rebuttal_outcome", "")
+    if outcome == RebuttalOutcome.ACCEPTED.value:
+        return "accepted"
+    return "rejected"
 
 
 # ============================================================
@@ -312,13 +431,15 @@ def build_feedback_loop(
     coder_model: str = "frontier",
     critic_model: str = "critic",
 ) -> StateGraph[GraphState]:
-    """Build the minimal feedback loop as a LangGraph StateGraph.
+    """Build the feedback loop with rebuttal as a LangGraph StateGraph.
 
-    Architecture:
-        assign_task → coder → tester → critic → [PASS|BLOCK|CAP]
-                                                     ├─ complete
-                                                     ├─ retry → increment → coder
-                                                     └─ fail
+    Architecture (Phase 2):
+        assign_task → coder → tester → critic
+             ├─ complete (PASS)
+             ├─ coder_rebut → judge_rebuttal
+             │    ├─ accepted → complete
+             │    └─ rejected → increment → coder
+             └─ fail (cap reached)
 
     Args:
         event_store: The event store for persisting events.
@@ -342,6 +463,8 @@ def build_feedback_loop(
     graph.add_node("coder", lambda s: _coder_node(s, coder, event_store))
     graph.add_node("tester", lambda s: _tester_node(s, tester, event_store))
     graph.add_node("critic", lambda s: _critic_node(s, critic, event_store))
+    graph.add_node("coder_rebut", lambda s: _coder_rebut_node(s, coder, event_store))
+    graph.add_node("judge_rebuttal", lambda s: _judge_rebuttal_node(s, critic, event_store))
     graph.add_node("complete", lambda s: _complete_node(s, event_store))
     graph.add_node("fail", lambda s: _fail_node(s, event_store))
     graph.add_node("increment", lambda s: {**s, "current_iteration": s["current_iteration"] + 1})
@@ -349,19 +472,32 @@ def build_feedback_loop(
     # Set entry point
     graph.set_entry_point("assign_task")
 
-    # Add edges
+    # Linear edges
     graph.add_edge("assign_task", "coder")
     graph.add_edge("coder", "tester")
     graph.add_edge("tester", "critic")
 
-    # Conditional edges from critic
+    # After critic: PASS → complete, BLOCK under cap → should_rebut, cap → fail
     graph.add_conditional_edges(
         "critic",
         _should_continue,
         {
             "complete": "complete",
-            "retry": "increment",
+            "should_rebut": "coder_rebut",
             "fail": "fail",
+        },
+    )
+
+    # After coder_rebut: if rebuttal was submitted → judge it, if not → increment
+    graph.add_edge("coder_rebut", "judge_rebuttal")
+
+    # After judge_rebuttal: accepted → complete, rejected → increment → coder
+    graph.add_conditional_edges(
+        "judge_rebuttal",
+        _rebuttal_outcome_router,
+        {
+            "accepted": "complete",
+            "rejected": "increment",
         },
     )
 

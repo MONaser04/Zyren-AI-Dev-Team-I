@@ -4,7 +4,11 @@
 from contracts.schemas import (
     BaseContract,
     CodePatch,
+    EscalationLevel,
     FileContent,
+    RebuttalJudgment,
+    RebuttalOutcome,
+    RebuttalRequest,
     ReviewDecision,
     ReviewIssue,
     Severity,
@@ -18,7 +22,11 @@ from contracts.schemas import (
 __all__ = [
     "BaseContract",
     "CodePatch",
+    "EscalationLevel",
     "FileContent",
+    "RebuttalJudgment",
+    "RebuttalOutcome",
+    "RebuttalRequest",
     "ReviewDecision",
     "ReviewIssue",
     "Severity",

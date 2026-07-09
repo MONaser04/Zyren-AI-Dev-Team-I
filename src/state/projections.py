@@ -111,6 +111,22 @@ def _apply_event(state: WorkflowState, event: Event) -> WorkflowState:
                 }
             )
 
+        case EventType.REBUTTAL_SUBMITTED:
+            rebuttals = [*state.rebuttals, event.payload.get("rebuttal", {})]
+            return state.model_copy(
+                update={
+                    "rebuttals": rebuttals,
+                }
+            )
+
+        case EventType.REBUTTAL_JUDGED:
+            judgments = [*state.rebuttal_judgments, event.payload.get("judgment", {})]
+            return state.model_copy(
+                update={
+                    "rebuttal_judgments": judgments,
+                }
+            )
+
         case _:
             # Unknown event types are silently ignored for forward compatibility
             return state
