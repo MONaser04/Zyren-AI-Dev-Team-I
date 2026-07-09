@@ -186,7 +186,7 @@ sequenceDiagram
 | **1** | State + contracts + minimal loop | ~4–6 wks | ✅ Done |
 | **2** | Grounded verification layer | ~3–4 wks | ✅ Done |
 | **3** | Gateway + tools + memory | ~5–6 wks | ✅ Done |
-| **4** | Observability + full roster | ~5–6 wks | 🟨 In progress |
+| **4** | Observability + full roster | ~5–6 wks | ✅ Done |
 | **5** | Resilience + human-in-the-loop | ~5–6 wks | ⬜ Not started |
 | **6** | Evaluation + red-teaming | ~5–6 wks | ⬜ Not started |
 | **7** | Self-improvement (ongoing) | ongoing | ⬜ Not started |
