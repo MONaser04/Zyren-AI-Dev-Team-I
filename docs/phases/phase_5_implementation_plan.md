@@ -117,18 +117,18 @@ Located in `evals/golden/tasks.yaml` — 11 diverse tasks covering:
 
 ### Dry-Run Mode (No API Calls)
 ```bash
-python run_supervisor.py --dry-run --rounds 3
-python test_run_phase5.py --rounds 2
+python scripts/run_supervisor.py --dry-run --rounds 3
+python scripts/test_run_phase5.py --rounds 2
 ```
 
 ### Live Mode (Real LLM Calls)
 ```bash
-python run_supervisor.py --live --rounds 5 --budget 25.0
+python scripts/run_supervisor.py --live --rounds 5 --budget 25.0
 ```
 
 ### Custom Configuration
 ```bash
-python run_supervisor.py --config config/phase5.yaml --rounds 10 --budget 50.0
+python scripts/run_supervisor.py --config config/phase5.yaml --rounds 10 --budget 50.0
 ```
 
 ## Output Reports

@@ -2,6 +2,15 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+import sys
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+src_path = PROJECT_ROOT / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
 from src.orchestrator.runner import run_workflow
 
 # تأكد من وضع مفاتيح الـ API الخاصة بك في ملف .env
