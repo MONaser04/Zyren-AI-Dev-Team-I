@@ -1,0 +1,15 @@
+{
+  "supervisor_id": "test-run-1",
+  "status": "error",
+  "started_at": "2026-07-10T08:18:51.681256+00:00",
+  "finished_at": "2026-07-10T08:18:51.781395+00:00",
+  "best_score": 0.0,
+  "best_round": 0,
+  "total_cost_usd": 0,
+  "total_evaluations": 0,
+  "total_tunings": 0,
+  "rounds": [],
+  "errors": [
+    "name 'logger' is not defined"
+  ]
+}

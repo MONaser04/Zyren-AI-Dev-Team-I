@@ -41,10 +41,10 @@ T = TypeVar("T", bound=BaseModel)
 # ============================================================
 
 DEFAULT_MODEL_MAP: dict[str, str] = {
-    "frontier": "openai/gpt-4o",
-    "fast": "openai/gpt-4o-mini",
-    "critic": "anthropic/claude-sonnet-4-20250514",
-    "fallback": "gemini/gemini-2.5-flash",
+    "frontier": "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b",
+    "fast": "nvidia_nim/minimaxai/minimax-m3",
+    "critic": "nvidia_nim/google/gemma-4-31b-it",
+    "fallback": "nvidia_nim/google/gemma-4-31b-it",
 }
 
 
@@ -98,9 +98,8 @@ class LLMClient:
 
         # Fallback chain: model → fallback_model
         self._fallback_chain: dict[str, str] = {
-            "openai/gpt-4o": "anthropic/claude-sonnet-4-20250514",
-            "anthropic/claude-sonnet-4-20250514": "gemini/gemini-2.5-flash",
-            "openai/gpt-4o-mini": "gemini/gemini-2.5-flash",
+            "nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b": "nvidia_nim/google/gemma-4-31b-it",
+            "nvidia_nim/minimaxai/minimax-m3": "nvidia_nim/google/gemma-4-31b-it",
         }
 
         # Cooldown state for models that return 429
@@ -250,7 +249,12 @@ class LLMClient:
             cleaned = cleaned[:-3]
         cleaned = cleaned.strip()
 
-        return response_model.model_validate_json(cleaned)
+        import json
+        try:
+            parsed = json.loads(cleaned, strict=False)
+            return response_model.model_validate(parsed)
+        except Exception:
+            return response_model.model_validate_json(cleaned)
 
     # ----------------------------------------------------------
     # Core — Retry + Fallback + Cost Tracking

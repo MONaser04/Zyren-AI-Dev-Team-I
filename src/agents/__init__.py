@@ -1,4 +1,4 @@
-from observability.instrumentation import trace_agent_invocation
+from src.observability.instrumentation import trace_agent_invocation
 # Agents — Role-based agent implementations (Phases 1-4)
 """Agents module: BaseAgent, CoderAgent, TesterAgent, CriticAgent, CriticFactory,
 plus Phase 4 full roster: ProductAnalyst, Planner, Architect, UX, DBEngineer,

@@ -1,0 +1,32 @@
+{
+  "run_id": "03cae3265aed",
+  "start_time": "2026-07-10T03:07:20.498756",
+  "end_time": "2026-07-10T03:07:22.853337",
+  "status": "completed",
+  "best_score": 0.33,
+  "best_round": 3,
+  "total_cost_usd": 0.39,
+  "rounds": [
+    {
+      "round_num": 1,
+      "timestamp": "2026-07-10T03:07:20.499627",
+      "avg_score": 0.3,
+      "pass_rate": 0.5,
+      "converged": false
+    },
+    {
+      "round_num": 2,
+      "timestamp": "2026-07-10T03:07:21.222074",
+      "avg_score": 0.325,
+      "pass_rate": 0.5,
+      "converged": false
+    },
+    {
+      "round_num": 3,
+      "timestamp": "2026-07-10T03:07:21.890002",
+      "avg_score": 0.33,
+      "pass_rate": 0.5,
+      "converged": false
+    }
+  ]
+}

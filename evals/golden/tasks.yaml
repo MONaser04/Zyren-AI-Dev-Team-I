@@ -1,139 +1,88 @@
-# ============================================================
-# AI Dev-Team — Golden Task Set
-# ============================================================
-# Curated coding tasks for day-one evaluation.
-# Add 10–20 real tasks BEFORE writing any agent code.
-#
-# Schema per task:
-#   id, title, description, language, difficulty, tags,
-#   input (files + instructions), expected (tests, types, lint)
-# ============================================================
+# =============================================================================
+# Golden Evaluation Tasks — Phase 5
+# =============================================================================
+# مجموعة مهام ذهبية تُستخدم لتقييم أداء الـ AI Dev Team pipeline.
+# كل task له id و prompt يمثل طلب تطوير برمجي.
+# =============================================================================
 
 tasks:
-  # ----------------------------------------------------------
-  # Template 1: Bug Fix (Easy)
-  # ----------------------------------------------------------
-  - id: "golden-001"
-    title: "Fix off-by-one error in pagination"
-    description: |
-      The `paginate()` function returns one fewer item than expected
-      on the last page. Fix the boundary condition.
-    language: "python"
-    difficulty: "easy"
-    tags: ["bugfix", "boundary"]
-    input:
-      instructions: |
-        The paginate function in utils.py has an off-by-one error.
-        The last page should include the remaining items but currently
-        drops the final item. Fix it.
-      files:
-        "utils.py": |
-          def paginate(items: list, page: int, size: int) -> list:
-              start = page * size
-              end = start + size - 1  # BUG: should be start + size
-              return items[start:end]
-    expected:
-      tests_pass: true
-      type_check: true
-      lint_clean: true
+  # ── Algorithmic Tasks ──────────────────────────────────────────────────────
+  - id: "g0"
+    prompt: >
+      Write a Python function `fibonacci(n: int) -> int` that returns
+      the n-th Fibonacci number using an iterative approach (no recursion).
+      Include type hints and a docstring. Return 0 for n=0, 1 for n=1.
 
-  # ----------------------------------------------------------
-  # Template 2: Refactoring (Medium)
-  # ----------------------------------------------------------
-  - id: "golden-002"
-    title: "Extract validation logic into separate function"
-    description: |
-      The `process_order()` function has inline validation logic
-      that should be extracted into a `validate_order()` function
-      for reusability and testability.
-    language: "python"
-    difficulty: "medium"
-    tags: ["refactor", "clean-code"]
-    input:
-      instructions: |
-        Extract the validation logic from process_order() into a
-        separate validate_order() function. Ensure all existing
-        tests still pass.
-      files: {}
-    expected:
-      tests_pass: true
-      type_check: true
-      lint_clean: true
+  - id: "g1"
+    prompt: >
+      Write a Python function `is_palindrome(s: str) -> bool` that checks
+      if a string is a palindrome, ignoring case, spaces, and punctuation.
+      Include type hints, docstring, and at least 3 assert-based tests.
 
-  # ----------------------------------------------------------
-  # Template 3: Feature Addition (Medium)
-  # ----------------------------------------------------------
-  - id: "golden-003"
-    title: "Add --verbose flag to CLI tool"
-    description: |
-      Add a --verbose / -v flag to the CLI that enables detailed
-      output logging. When not set, only errors should be printed.
-    language: "python"
-    difficulty: "medium"
-    tags: ["feature", "cli"]
-    input:
-      instructions: |
-        Add a --verbose flag using argparse. When enabled, print
-        debug-level information. Default behavior is quiet mode.
-      files: {}
-    expected:
-      tests_pass: true
-      type_check: true
-      lint_clean: true
+  - id: "g2"
+    prompt: >
+      Implement a generic `Stack[T]` class in Python with methods:
+      `push(item: T)`, `pop() -> T`, `peek() -> T`, `is_empty() -> bool`.
+      Include proper error handling (raise exception on pop/peek empty).
+      Include type hints and docstrings.
 
-  # ----------------------------------------------------------
-  # Template 4: Test Writing (Easy)
-  # ----------------------------------------------------------
-  - id: "golden-004"
-    title: "Write unit tests for string utility module"
-    description: |
-      The string_utils module has no tests. Write comprehensive
-      pytest tests covering edge cases (empty string, unicode,
-      special characters).
-    language: "python"
-    difficulty: "easy"
-    tags: ["testing", "pytest"]
-    input:
-      instructions: |
-        Write pytest unit tests for all functions in string_utils.py.
-        Cover: normal cases, edge cases, error cases.
-      files: {}
-    expected:
-      tests_pass: true
-      type_check: true
-      lint_clean: true
+  # ── API / Web Tasks ────────────────────────────────────────────────────────
+  - id: "g3"
+    prompt: >
+      Create a FastAPI application with two endpoints:
+      - POST /users — creates a user with name and email, stores in memory
+      - GET /users/{user_id} — retrieves a user by ID
+      Use Pydantic models for request/response validation.
+      Include proper HTTP status codes and error responses.
 
-  # ----------------------------------------------------------
-  # Template 5: Data Processing (Hard)
-  # ----------------------------------------------------------
-  - id: "golden-005"
-    title: "Parse and normalize nested JSON API response"
-    description: |
-      Write a function that takes a deeply nested JSON API response
-      and flattens it into a list of normalized records suitable
-      for database insertion.
-    language: "python"
-    difficulty: "hard"
-    tags: ["data", "json", "transformation"]
-    input:
-      instructions: |
-        Implement flatten_api_response() that handles:
-        - Nested objects (dot notation keys)
-        - Arrays (one record per array item)
-        - Null/missing fields (default values)
-        - Type coercion (strings to dates, numbers)
-      files: {}
-    expected:
-      tests_pass: true
-      type_check: true
-      lint_clean: true
+  - id: "g4"
+    prompt: >
+      Write an async Python function `fetch_json(url: str) -> dict` using
+      aiohttp that fetches JSON from a URL with proper error handling for:
+      connection errors, HTTP errors (4xx, 5xx), and invalid JSON responses.
+      Include type hints, docstring, and a retry mechanism (max 3 retries
+      with exponential backoff).
 
-# ============================================================
-# TODO: Add 5–15 more real tasks from your own projects
-# ============================================================
-# Guidelines:
-#   - Mix of difficulties: ~30% easy, ~50% medium, ~20% hard
-#   - Mix of categories: bugfix, refactor, feature, test, data
-#   - Use real code from your projects when possible
-#   - Each task should be completable in < 30 min by a human
-# ============================================================
+  # ── Data Structure Tasks ───────────────────────────────────────────────────
+  - id: "g5"
+    prompt: >
+      Implement a `CircularBuffer[T]` class with fixed capacity. Methods:
+      `enqueue(item: T)`, `dequeue() -> T`, `is_full() -> bool`,
+      `is_empty() -> bool`, `peek() -> T`, `size() -> int`.
+      Overwrite oldest items when full. Include type hints and tests.
+
+  - id: "g6"
+    prompt: >
+      Write a function `merge_sorted_lists(lists: list[list[int]]) -> list[int]`
+      that merges K sorted lists into one sorted list using a min-heap
+      (heapq). Include type hints, docstring, and complexity analysis
+      in the docstring.
+
+  # ── Utility Tasks ──────────────────────────────────────────────────────────
+  - id: "g7"
+    prompt: >
+      Write a decorator `@retry_on_failure(max_retries=3, backoff_factor=2.0)`
+      that retries a function on exception with exponential backoff.
+      Include type hints, docstring, and an example usage.
+
+  - id: "g8"
+    prompt: >
+      Write a Python context manager `timed_block(name: str)` that logs
+      the execution time of a block of code using `time.perf_counter()`.
+      Print: "[name] took X.XXX seconds". Include type hints.
+
+  # ── Security / Validation Tasks ────────────────────────────────────────────
+  - id: "g9"
+    prompt: >
+      Write a function `sanitize_sql_input(value: str) -> str` that
+      escapes single quotes and removes semicolons from a string to
+      prevent basic SQL injection. Include type hints, docstring,
+      and assert-based validation tests with malicious inputs.
+
+  - id: "g10"
+    prompt: >
+      Implement a `RateLimiter` class with methods:
+      `allow_request(client_id: str) -> bool` and `reset(client_id: str)`.
+      Uses a sliding window algorithm with configurable max_requests per
+      window_seconds. Use `time.monotonic()` for timing.
+      Include type hints and docstrings.

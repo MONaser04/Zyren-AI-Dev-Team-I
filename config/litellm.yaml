@@ -11,8 +11,8 @@ model_list:
   # ----------------------------------------------------------
   - model_name: "frontier"
     litellm_params:
-      model: "openai/gpt-4o"            # Change to your preferred frontier model
-      api_key: "os.environ/OPENAI_API_KEY"
+      model: "nvidia_nim/deepseek-ai/deepseek-v4-pro"
+      api_key: "os.environ/NVIDIA_NIM_API_KEY"
       max_tokens: 8192
       temperature: 0.0
 
@@ -21,8 +21,8 @@ model_list:
   # ----------------------------------------------------------
   - model_name: "fast"
     litellm_params:
-      model: "openai/gpt-4o-mini"       # Change to your preferred fast model
-      api_key: "os.environ/OPENAI_API_KEY"
+      model: "nvidia_nim/minimaxai/minimax-m3"
+      api_key: "os.environ/NVIDIA_NIM_API_KEY"
       max_tokens: 4096
       temperature: 0.0
 
@@ -31,8 +31,8 @@ model_list:
   # ----------------------------------------------------------
   - model_name: "critic"
     litellm_params:
-      model: "anthropic/claude-sonnet-4-20250514"
-      api_key: "os.environ/ANTHROPIC_API_KEY"
+      model: "nvidia_nim/google/gemma-4-31b-it"
+      api_key: "os.environ/NVIDIA_NIM_API_KEY"
       max_tokens: 8192
       temperature: 0.0
 
@@ -41,8 +41,8 @@ model_list:
   # ----------------------------------------------------------
   - model_name: "fallback"
     litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
+      model: "nvidia_nim/google/gemma-4-31b-it"
+      api_key: "os.environ/NVIDIA_NIM_API_KEY"
       max_tokens: 8192
       temperature: 0.0
 

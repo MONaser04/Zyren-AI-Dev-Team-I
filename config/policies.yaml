@@ -93,3 +93,15 @@ roles:
     denied_tools:
       - filesystem.write
       - shell.execute
+
+  optim:
+    description: "Optimisation team — analyses results, tunes prompts"
+    allowed_tools:
+      - state.read
+      - filesystem.read
+      - db.read
+    denied_tools:
+      - filesystem.write
+      - shell.execute
+      - db.destructive
+      - deploy.production

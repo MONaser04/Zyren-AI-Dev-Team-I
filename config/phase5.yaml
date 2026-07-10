@@ -1,0 +1,60 @@
+# =============================================================================
+# Phase 5 — Closed-Loop Self-Improvement Configuration
+# =============================================================================
+# YAML config for the Supervisor agent that runs eval→analyse→tune→re-eval.
+# =============================================================================
+
+supervisor:
+  max_rounds: 5                    # عدد جولات التحسين القصوى
+  eval_instances_per_round: 3      # عدد مهام الـ golden اللي تشتغل كل جولة
+  max_workflow_iterations: 5       # الحد الأقصى لتكرارات الـ workflow لكل task
+  cost_cap_per_workflow_usd: 0.50  # سقف تكلفة لكل workflow run
+  session_budget_usd: 10.00        # ميزانية الجلسة الكاملة (كل الجولات)
+  enable_prompt_tuning: true       # تفعيل DSPy prompt tuning
+  enable_model_switching: true     # تفعيل تبديل الموديلز الضعيفة
+  enable_redteam_hardening: false  # Red-team adversarial hardening
+  enable_convergence: true         # تفعيل كشف الـ convergence
+
+  convergence:
+    min_samples: 3                 # أقل عدد عينات مطلوب لبدء الفحص
+    window_size: 3                 # حجم النافذة المنزلقة لمقارنة الجولات
+    improvement_threshold: 0.02    # أقل تحسن مطلوب عشان نعتبر فيه تقدم (2%)
+    patience: 2                    # كام جولة نستنى بدون تحسن قبل ما نوقف
+    min_score_threshold: 0.70      # أقل score مقبول عشان نعتبر الأداء كافي
+
+evaluations:
+  golden:
+    enabled: true
+    tasks_file: "evals/golden/tasks.yaml"
+    default_instances: 5
+  swebench:
+    enabled: false                  # ممكن يتفعل بعدين مع SWE-bench dataset
+  redteam:
+    enabled: false
+
+optimisation:
+  prompt_tuner:
+    strategy: "dspy"                # استراتيجية الـ tuning (DSPy)
+    variants_per_agent: 5           # عدد الـ prompt variants لكل agent role
+    max_llm_calls: 50               # سقف استدعاءات LLM أثناء tuning
+    metric: "weighted"              # مقياس التقييم المستخدم
+    # metric options: "weighted", "test_pass_rate", "composite"
+  model_optimiser:
+    enabled: true
+    min_success_rate: 0.6           # أقل نسبة نجاح للموديل عشان يفضل شغال
+    evaluation_interval: 3          # كل كام جولة نراجع أداء الموديلز
+
+feedback:
+  db_path: "optim/feedback.db"     # مسار قاعدة بيانات الـ feedback (SQLite)
+
+reporting:
+  output_dir: "reports/"           # فولدر إخراج التقارير
+  formats:                          # صيغ التقارير
+    - json
+    - markdown
+
+hitl:
+  enabled: false                    # Human-In-The-Loop approval gate
+
+logging:
+  level: "INFO"                     # مستوى الـ logging

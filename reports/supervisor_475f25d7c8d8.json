@@ -1,0 +1,18 @@
+{
+  "run_id": "475f25d7c8d8",
+  "start_time": "2026-07-10T03:07:20.457165",
+  "end_time": "2026-07-10T03:07:20.493656",
+  "status": "completed",
+  "best_score": 0.6000000000000001,
+  "best_round": 1,
+  "total_cost_usd": 0.03,
+  "rounds": [
+    {
+      "round_num": 1,
+      "timestamp": "2026-07-10T03:07:20.458106",
+      "avg_score": 0.6000000000000001,
+      "pass_rate": 0.5,
+      "converged": false
+    }
+  ]
+}

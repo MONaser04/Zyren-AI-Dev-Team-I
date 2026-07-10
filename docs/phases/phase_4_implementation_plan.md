@@ -310,4 +310,216 @@ class MetricsConfig:
 
 def setup_metrics(config: MetricsConfig | None = None) -> None:
     """Initialize global metrics. Idempotent."""
-    global _initialized
+    global _initialized, _meter, token_usage_counter, operation_duration_hist
+    global agent_invocations_counter, tool_executions_counter
+
+    if _initialized:
+        return
+    if config is None:
+        config = MetricsConfig()
+
+    exporter = OTLPMetricExporter(endpoint=f"{config.otlp_endpoint}/v1/metrics")
+    reader = PeriodicExportingMetricReader(exporter, export_interval_millis=config.export_interval_ms)
+    provider = MeterProvider(metric_readers=[reader])
+    metrics.set_meter_provider(provider)
+
+    _meter = metrics.get_meter(_meter_name)
+
+    token_usage_counter = _meter.create_counter(
+        "gen_ai.client.token.usage",
+        description="Measures number of input and output tokens used",
+    )
+    operation_duration_hist = _meter.create_histogram(
+        "gen_ai.client.operation.duration",
+        description="Duration of GenAI operations",
+        unit="s",
+    )
+    agent_invocations_counter = _meter.create_counter(
+        "agent.invocations",
+        description="Counts agent run() invocations by role and verdict",
+    )
+    tool_executions_counter = _meter.create_counter(
+        "tool.executions",
+        description="Counts tool executions",
+    )
+    _initialized = True
+
+def record_token_usage(model: str, input_tokens: int, output_tokens: int) -> None:
+    if token_usage_counter:
+        token_usage_counter.add(input_tokens, {"gen_ai.request.model": model, "token.type": "input"})
+        token_usage_counter.add(output_tokens, {"gen_ai.request.model": model, "token.type": "output"})
+
+def record_operation_duration(operation: str, model: str, duration_s: float) -> None:
+    if operation_duration_hist:
+        operation_duration_hist.record(duration_s, {
+            "gen_ai.operation.name": operation,
+            "gen_ai.request.model": model,
+        })
+
+def record_agent_invocation(role: str, verdict: str) -> None:
+    if agent_invocations_counter:
+        agent_invocations_counter.add(1, {"agent.role": role, "agent.verdict": verdict})
+
+def record_tool_execution(tool_name: str, role: str, success: bool) -> None:
+    if tool_executions_counter:
+        tool_executions_counter.add(1, {"tool.name": tool_name, "agent.role": role, "tool.success": str(success)})
+```
+
+---
+
+<a id="component-2"></a>
+### 🔹 Component 2 — Agent Instrumentation (Spans + Metrics)
+
+**Goal:** Instrument all Agent interactions using standard OpenTelemetry GenAI conventions via Python decorators.
+
+**Files:**
+| Action | File | Description |
+|---|---|---|
+| new | `src/observability/instrumentation.py` | Decorators (`@trace_agent_invocation`, `@trace_chat`, `@trace_tool_execution`) |
+| modify | `src/agents/*.py` | Apply decorators to all `run()` methods |
+
+#### 2A. Decorator Implementation (`instrumentation.py`)
+Provides `@trace_agent_invocation`, `@trace_chat`, and `@trace_tool_execution` decorators. These capture agent role, workflow ID, tokens, duration, and finish reasons.
+
+---
+
+<a id="component-3"></a>
+### 🔹 Component 3 — Semantic Router (Fast Lane / Full SDLC)
+
+**Goal:** Provide lightweight pre-classification of incoming tasks to decide if they need the full Agent Roster (COMPLEX) or just the Fast Lane (SIMPLE).
+
+**Files:**
+| Action | File | Description |
+|---|---|---|
+| new | `src/orchestrator/semantic_router.py` | Router logic returning `RoutingDecision` |
+| modify | `src/contracts/schemas.py` | Add `TaskComplexity`, `RoutingDecision` |
+
+#### 3A. Router Logic
+- **Input:** Task Description.
+- **Output:** `RoutingDecision(complexity, confidence, safe_fallback, fast_lane, reasoning)`.
+- **Condition:** If `confidence < 0.7`, `safe_fallback = True` forcing the full SDLC.
+
+---
+
+<a id="component-4"></a>
+### 🔹 Component 4 — Full Agent Roster (11 New Agents)
+
+**Goal:** Implement the remaining 11 agents in the SDLC pipeline out of the 14 defined roles.
+
+**Files:**
+| Action | File | Description |
+|---|---|---|
+| new | `src/agents/architect.py` | `ArchitectAgent` |
+| new | `src/agents/db_engineer.py` | `DBEngineerAgent` |
+| new | `src/agents/docs.py` | `DocsAgent` |
+| new | `src/agents/integrator.py` | `IntegratorAgent` |
+| new | `src/agents/liaison.py` | `LiaisonAgent` |
+| new | `src/agents/planner.py` | `PlannerAgent` |
+| new | `src/agents/product_analyst.py` | `ProductAnalystAgent` |
+| new | `src/agents/researcher.py` | `ResearcherAgent` |
+| new | `src/agents/security.py` | `SecurityAgent` |
+| new | `src/agents/supervisor.py` | `SupervisorAgent` |
+| new | `src/agents/ux.py` | `UXAgent` |
+
+*All agents must inherit from `BaseAgent` and use `@trace_agent_invocation(agent_role="...")` on their `run()` method.*
+
+---
+
+<a id="component-5"></a>
+### 🔹 Component 5 — DAG Concurrency: Fan-out / Fan-in
+
+**Goal:** Update the LangGraph to handle the new full SDLC, executing tasks concurrently and joining results at the Integrator.
+
+**Files:**
+| Action | File | Description |
+|---|---|---|
+| modify | `src/orchestrator/graph.py` | Add SDLC fan-out and fan-in routing logic |
+
+#### 5A. Graph Construction
+- Route dynamically via `_route_decision()`.
+- Add conditional edges from `route` node to either `coder` (Fast Lane) or `product_analyst` (Full SDLC).
+- Connect `architect` to `ux`, `db`, `security`, `researcher`, and `coder_sdlc` concurrently.
+- Fan-in all parallel node outputs to the `integrator` node.
+
+---
+
+<a id="component-6"></a>
+### 🔹 Component 6 — Milestone-Based Docs + Integration + Tests
+
+**Goal:** Fire off documentation milestones (Architecture ADR, post-integration docs) and ensure 100% test coverage.
+
+**Files:**
+| Action | File | Description |
+|---|---|---|
+| modify | `tests/` | Include full test suite for `test_orchestrator.py` |
+
+---
+
+<a id="new-event-types"></a>
+## 6. New Event Types
+
+Add the following to `src/state/events.py` via `EventType`:
+1. `ROUTING_DECIDED`
+2. `PRODUCT_REQUIREMENTS_CREATED`
+3. `TASK_DAG_CREATED`
+4. `ARCHITECT_DESIGN_CREATED`
+5. `UX_DESIGN_CREATED`
+6. `DB_SCHEMA_CREATED`
+7. `SECURITY_REPORT_CREATED`
+8. `RESEARCH_NOTES_CREATED`
+9. `INTEGRATION_COMPLETED`
+10. `DOCUMENTATION_CREATED`
+
+---
+
+<a id="new-dependencies"></a>
+## 7. New Dependencies
+
+(Covered in pyproject.toml under Observability)
+- `opentelemetry-api`
+- `opentelemetry-sdk`
+- `opentelemetry-exporter-otlp-proto-http`
+
+---
+
+<a id="configuration-changes"></a>
+## 8. Configuration Changes
+Update `.env.example` with `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_CAPTURE_PROMPTS=0`.
+Add Jaeger to `docker-compose.yml`.
+
+---
+
+<a id="testing-strategy"></a>
+## 9. Testing Strategy
+- Unit test all Semantic Router confidence downgrades.
+- Verify DAG nodes trigger parallel executions properly.
+- Verify OTel tracing decorators correctly log traces and span durations without breaking agent logic.
+- Ensure 100% passing tests via `uv run pytest`.
+
+---
+
+<a id="definition-of-done"></a>
+## 10. Definition of Done — Phase 4
+- [x] OTel Tracing + Metrics emitted to OTLP backend.
+- [x] Semantic Router redirects SIMPLE requests.
+- [x] 14 fully functioning Agent roles present.
+- [x] Fan-out / Fan-in DAG integrated successfully in `graph.py`.
+- [x] Milestone-Based Docs triggered accurately.
+- [x] 100% test pass rate for new logic.
+
+---
+
+<a id="execution-sequence"></a>
+## 11. Execution Sequence (Task Order)
+1. Initialize OTel (Components 1 & 2).
+2. Create schemas and Semantic Router (Component 3).
+3. Build the 11 new agent roles (Component 4).
+4. Connect the Fan-out/Fan-in nodes in LangGraph (Component 5).
+5. Run full test suite validation (Component 6).
+
+---
+
+<a id="risks"></a>
+## 12. Risks & Mitigations
+- **Latency Overhead:** OTel Batch processors must not block execution. *Mitigation: BatchSpanProcessor handles asynchronous export.*
+- **LLM Rate Limits during Fan-out:** Parallel agents hitting LiteLLM. *Mitigation: Jitter/Retry Gateway built in Phase 3 mitigates limits.*

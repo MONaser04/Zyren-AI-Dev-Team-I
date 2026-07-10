@@ -73,12 +73,38 @@ ps: ## Show infrastructure status
 	docker compose ps
 
 # ============================================================
-# Evaluation
+# Evaluation (Phase 5)
 # ============================================================
 
-eval: ## Run evaluation harness (golden tasks + SWE-bench)
-	@echo "$(YELLOW)⚠ Eval harness not yet wired — coming in Phase 1$(RESET)"
-	@echo "  Placeholder: uv run python evals/swebench/run_harness.py"
+eval: ## Run evaluation harness (Golden + SWE-bench + Red-team)
+	uv run python -m evals.golden.runner
+
+eval-golden: ## Run only Golden Set evaluation
+	uv run python -m evals.golden.runner
+
+eval-swebench: ## Run SWE-bench evaluation
+	uv run python -m evals.swebench.harness
+
+eval-redteam: ## Run Red-team security evaluation
+	uv run python -m evals.redteam.attacks
+
+eval-all: ## Run all evaluation suites
+	uv run python -m evals.golden.runner && \
+	uv run python -m evals.swebench.harness && \
+	uv run python -m evals.redteam.attacks
+
+# ============================================================
+# Phase 5: Closed-Loop Optimisation
+# ============================================================
+
+supervisor: ## Run Supervisor closed-loop optimisation
+	uv run python -m src.agents.supervisor
+
+supervisor-round: ## Run single optimisation round
+	uv run python -c "from src.agents.supervisor import run_single_optimisation_round; run_single_optimisation_round()"
+
+optim-report: ## Generate optimisation report from latest results
+	uv run python -m optim.reporter
 
 # ============================================================
 # Cleanup
