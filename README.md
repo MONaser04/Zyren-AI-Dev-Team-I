@@ -26,19 +26,19 @@
 3. [The Grounded Feedback Loop](#feedback-loop)
 4. [Guiding Principles & North-Star](#principles)
 5. [Roadmap at a Glance](#roadmap)
-6. [Phase 0 — Foundation & Environment](#phase-0)
-7. [Phase 1 — State, Contracts & Minimal Loop](#phase-1)
-8. [Phase 2 — Grounded Verification Layer](#phase-2)
-9. [Phase 3 — Gateway, Tools & Memory](#phase-3)
-10. [Phase 4 — Observability & Full Roster](#phase-4)
-11. [Phase 5 — Resilience & Human-in-the-Loop](#phase-5)
-12. [Phase 6 — Evaluation & Adversarial Testing](#phase-6)
-13. [Phase 7 — Self-Improvement & Hardening](#phase-7)
-14. [Agent Roster](#roster)
-15. [Non-Goals & Future Milestones](#out-of-scope)
-16. [Proposed Repository Structure](#repo-structure)
-17. [Definition of Done](#definition-of-done)
-18. [How to Use This Roadmap](#how-to-use)
+6. [How to Use This Roadmap](#how-to-use)
+7. [Phase 0 — Foundation & Environment](#phase-0)
+8. [Phase 1 — State, Contracts & Minimal Loop](#phase-1)
+9. [Phase 2 — Grounded Verification Layer](#phase-2)
+10. [Phase 3 — Gateway, Tools & Memory](#phase-3)
+11. [Phase 4 — Observability & Full Roster](#phase-4)
+12. [Phase 5 — Resilience & Human-in-the-Loop](#phase-5)
+13. [Phase 6 — Evaluation & Adversarial Testing](#phase-6)
+14. [Phase 7 — Self-Improvement & Hardening](#phase-7)
+15. [Agent Roster](#roster)
+16. [Non-Goals & Future Milestones](#out-of-scope)
+17. [Proposed Repository Structure](#repo-structure)
+18. [Definition of Done](#definition-of-done)
 19. [Glossary](#glossary)
 20. [Research Basis & Sources](#sources)
 21. [License](#license)
@@ -207,6 +207,20 @@ sequenceDiagram
 | **7** | Self-improvement (ongoing) | ongoing | ⬜ Not started |
 
 *Legend: ⬜ Not started · 🟨 In progress · ✅ Done. Tick the checkboxes in each phase as you build.*
+
+[↑ Back to top](#top)
+
+---
+
+<a id="how-to-use"></a>
+## 📌 How to Use This Roadmap
+
+> [!CAUTION]
+> **The hard rule:** after **every** phase, re-run the SWE-bench Lite + golden-task harness. If a new component doesn't measurably improve % Resolved (or improve cost/latency at equal quality), **cut it**.
+
+- Treat each `- [ ]` as a real deliverable — tick it only when it's tested and traced.
+- Update the **Status** column in [Roadmap at a Glance](#roadmap) as you progress (⬜ → 🟨 → ✅).
+- Don't skip ahead: Phases 0–2 are the spine. If the minimal loop in Phase 1 doesn't beat a single-shot baseline, **stop and fix it** before Phase 3+.
 
 [↑ Back to top](#top)
 
@@ -493,20 +507,6 @@ The system autonomously takes a well-specified coding task and produces **runnab
 - ✅ all code executed in a secure sandbox,
 - ✅ a working human **break-glass** interrupt + resume,
 - ✅ a measured **SWE-bench Lite** score that **beats a single-agent baseline**.
-
-[↑ Back to top](#top)
-
----
-
-<a id="how-to-use"></a>
-## 📌 How to Use This Roadmap
-
-> [!CAUTION]
-> **The hard rule:** after **every** phase, re-run the SWE-bench Lite + golden-task harness. If a new component doesn't measurably improve % Resolved (or improve cost/latency at equal quality), **cut it**.
-
-- Treat each `- [ ]` as a real deliverable — tick it only when it's tested and traced.
-- Update the **Status** column in [Roadmap at a Glance](#roadmap) as you progress (⬜ → 🟨 → ✅).
-- Don't skip ahead: Phases 0–2 are the spine. If the minimal loop in Phase 1 doesn't beat a single-shot baseline, **stop and fix it** before Phase 3+.
 
 [↑ Back to top](#top)
 
