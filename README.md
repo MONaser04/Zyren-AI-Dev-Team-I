@@ -184,7 +184,7 @@ sequenceDiagram
 > 4. **North-Star benchmark:** **SWE-bench Verified (500) + Lite (300) % Resolved**, tracked from day one. Also maintain 10–20 personal "golden tasks".
 > 5. **The hard rule:** after every phase, re-run the harness. If a component doesn't measurably improve resolve-rate (or cost/latency at equal quality) — **cut it**.
 > 6. **Verified Ground Truth for Data Layer | Full LLM Reasoning for Reasoning Layer** — Data Layer (ModelRegistry, SmartGateway, ProviderAdapters, CostTracker, ConfigManager) **never guesses**; every field has a verified source + citation. Reasoning Layer (Coder, Architect, Critic, Planner, Researcher, Tester, Liaison) **never stops reasoning**; full LLM reasoning for all decisions.
-> 7. **Auto-Discovery Default + Manual Override Via Liaison Chat** — System starts in **Auto Mode**: discovers, validates, registers models from official sources. User says: *"أضف gpt-4o-mini من Azure eastus2 واجعله افتراضي للمهام البسيطة"* → System executes end-to-end. No code changes, no config file edits, no restarts.
+> 7. **Auto-Discovery Default + Manual Override Via Liaison Chat** — System starts in **Auto Mode**: discovers, validates, registers models from official sources. User says: *"Add gpt-4o-mini from Azure eastus2 and make it the default for simple tasks"* → System executes end-to-end. No code changes, no config file edits, no restarts.
 > 8. **Zero Real API Calls in Tests** — All tests use `MockGateway`, `MockProviderAPIs`, `MockEventStore`. CI/CD runs completely offline.
 > 9. **Circuit Breakers Everywhere** — Per-model, per-provider, per-workflow budget caps. Automatic fallback chains with cooldown. Health monitoring with alerting.
 
