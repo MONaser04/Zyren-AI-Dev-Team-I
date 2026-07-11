@@ -160,3 +160,61 @@ def compute_improvement_delta(
     prev_mean = sum(previous_scores) / len(previous_scores) if previous_scores else 0.0
     curr_mean = sum(current_scores) / len(current_scores) if current_scores else 0.0
     return round(curr_mean - prev_mean, 4)
+
+
+# ── Performance Analyser Class ─────────────────────────────────────────────────
+
+
+class PerformanceAnalyser:
+    """High-level performance analysis for the Supervisor.
+
+    Wraps the analyse_round function and provides additional
+    historical tracking capabilities.
+    """
+
+    def __init__(self, feedback_store: FeedbackStore | None = None) -> None:
+        self.feedback_store = feedback_store
+        self.round_history: list[dict[str, Any]] = []
+
+    def analyse(self, eval_results: list[EvalResult]) -> dict[str, Any]:
+        """Analyse a round of evaluation results."""
+        result = analyse_round(eval_results, self.feedback_store)
+        self.round_history.append(result)
+        return result
+
+    def get_trend(self, metric: str = "mean_score", window: int = 3) -> dict[str, Any]:
+        """Get trend analysis for a metric over recent rounds."""
+        if len(self.round_history) < 2:
+            return {"trend": "insufficient_data", "values": []}
+
+        values = [r["summary"].get(metric, 0) for r in self.round_history[-window:]]
+        if len(values) < 2:
+            return {"trend": "insufficient_data", "values": values}
+
+        # Simple trend: compare first and last in window
+        delta = values[-1] - values[0]
+        if delta > 0.02:
+            trend = "improving"
+        elif delta < -0.02:
+            trend = "declining"
+        else:
+            trend = "stable"
+
+        return {
+            "trend": trend,
+            "values": values,
+            "delta": round(delta, 4),
+            "window": len(values),
+        }
+
+    def get_recommendations(self) -> list[str]:
+        """Get consolidated recommendations from all rounds."""
+        all_recs = []
+        for r in self.round_history:
+            all_recs.extend(r.get("recommendations", []))
+        # Deduplicate while preserving order
+        return list(dict.fromkeys(all_recs))
+
+
+# Alias for backwards compatibility
+analyse_results = analyse_round

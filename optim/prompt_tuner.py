@@ -211,3 +211,117 @@ def tune_prompts(
                 logger.warning("Failed to persist tuning for '%s': %s", agent, e)
 
     return results
+
+
+# ── PromptTuner Class Wrapper (for test compatibility) ────────────────────────────
+
+
+class PromptTuner:
+    """DSPy-style prompt tuner wrapper for Phase 5 tests."""
+
+    def __init__(
+        self,
+        model: str = "critic",
+        max_variants: int = 5,
+        llm_client: LLMClient | None = None,
+    ) -> None:
+        self.model = model
+        self.max_variants = max_variants
+        self.llm_client = llm_client
+
+    def generate_variants(
+        self,
+        original: str,
+        failure_analysis: dict[str, Any],
+        num_variants: int | None = None,
+    ) -> list[str]:
+        """Generate prompt variants based on failure analysis."""
+        n = num_variants or self.max_variants
+        return generate_variants(original, n, llm_client=self.llm_client)
+
+    def tune(
+        self,
+        agent: str,
+        original: str,
+        failure_analysis: dict[str, Any],
+        eval_results: list[EvalResult] | None = None,
+    ) -> TuningResult:
+        """Tune a prompt for a specific agent."""
+        n = self.max_variants
+        variants = generate_variants(original, n, llm_client=self.llm_client)
+        evaluations = evaluate_variants(variants, eval_results or [], agent)
+        best = max(evaluations, key=lambda e: e["score"], default={"variant": original, "score": 0.0})
+        best_variant_text = variants[best["variant_index"]] if "variant_index" in best else original
+        best_score = best["score"]
+
+        return TuningResult(
+            agent=agent,
+            original_prompt=original,
+            variants=variants,
+            evaluations=evaluations,
+            best_variant=best_variant_text,
+            best_score=best_score,
+        )
+
+
+def tune_prompts(
+    *,
+    eval_results: list[EvalResult],
+    agents: list[str] | None = None,
+    n_variants: int = 5,
+    llm_client: LLMClient | None = None,
+    feedback_store: FeedbackStore | None = None,
+) -> list[TuningResult]:
+    """Run prompt tuning for the specified agents.
+
+    Args:
+        eval_results: Current round's evaluation results (for scoring).
+        agents: List of agent roles to tune (default: all known agents).
+        n_variants: Number of prompt variants per agent.
+        llm_client: Optional LLM client for generating variants.
+        feedback_store: Optional store for persisting tuning history.
+
+    Returns:
+        List of TuningResult objects — one per agent.
+    """
+    agent_list = agents or list(AGENT_DEFAULTS.keys())
+    results: list[TuningResult] = []
+
+    for agent in agent_list:
+        original = AGENT_DEFAULTS.get(agent, f"You are a {agent} agent.")
+        logger.info("Tuning prompt for agent '%s' (%d variants)...", agent, n_variants)
+
+        variants = generate_variants(original, n_variants, llm_client=llm_client)
+        evaluations = evaluate_variants(variants, eval_results, agent)
+
+        # Select best variant
+        best = max(evaluations, key=lambda e: e["score"], default={"variant": original, "score": 0.0})
+        best_variant_text = variants[best["variant_index"]] if "variant_index" in best else original
+        best_score = best["score"]
+
+        result = TuningResult(
+            agent=agent,
+            original_prompt=original,
+            variants=variants,
+            evaluations=evaluations,
+            best_variant=best_variant_text,
+            best_score=best_score,
+        )
+
+        results.append(result)
+
+        # Persist
+        if feedback_store:
+            try:
+                feedback_store.save_tuning(
+                    agent=agent,
+                    original_prompt=original,
+                    variants=variants,
+                    evaluations=evaluations,
+                    best_variant=best_variant_text,
+                    best_score=best_score,
+                )
+            except Exception as e:
+                logger.warning("Failed to persist tuning for '%s': %s", agent, e)
+
+    return results

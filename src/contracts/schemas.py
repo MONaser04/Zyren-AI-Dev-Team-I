@@ -180,6 +180,7 @@ class CodePatch(BaseContract):
         return self
 
 
+
 # ============================================================
 # VerificationReport — Tester → Critic (facts only)
 # ============================================================
@@ -260,6 +261,12 @@ class VerificationReport(BaseContract):
             and self.security_passed
         )
 
+    @classmethod
+    def from_stored(cls, data: dict) -> "VerificationReport":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        # This model only has bool fields, no enums to convert
+        return cls.model_validate(data)
+
 
 # ============================================================
 # ReviewDecision — Critic → Orchestrator / Coder
@@ -282,6 +289,13 @@ class ReviewIssue(BaseContract):
         default="",
         description="Source of the signal (e.g., 'pytest', 'mypy', 'ruff').",
     )
+
+    @classmethod
+    def from_stored(cls, data: dict) -> "ReviewIssue":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        if isinstance(data.get("severity"), str):
+            data = {**data, "severity": Severity(data["severity"])}
+        return cls.model_validate(data)
 
 
 class ReviewDecision(BaseContract):
@@ -320,6 +334,23 @@ class ReviewDecision(BaseContract):
             raise ValueError(msg)
         return self
 
+    @classmethod
+    def from_stored(cls, data: dict) -> "ReviewDecision":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        # Handle verdict
+        if isinstance(data.get("verdict"), str):
+            data = {**data, "verdict": Verdict(data["verdict"])}
+        # Handle escalation_level
+        if isinstance(data.get("escalation_level"), str):
+            data = {**data, "escalation_level": EscalationLevel(data["escalation_level"])}
+        # Handle created_at
+        if isinstance(data.get("created_at"), str):
+            data = {**data, "created_at": datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))}
+        # Handle issues
+        if "issues" in data and isinstance(data["issues"], list):
+            data = {**data, "issues": [ReviewIssue.from_stored(issue) for issue in data["issues"]]}
+        return cls.model_validate(data)
+
 
 # ============================================================
 # RebuttalRequest — Coder's Right of Rebuttal (Phase 2)
@@ -349,6 +380,15 @@ class RebuttalRequest(BaseContract):
         default_factory=list,
         description="Descriptions of the specific issues being disputed.",
     )
+
+    @classmethod
+    def from_stored(cls, data: dict) -> "RebuttalRequest":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        if isinstance(data.get("original_verdict"), str):
+            data = {**data, "original_verdict": Verdict(data["original_verdict"])}
+        if isinstance(data.get("created_at"), str):
+            data = {**data, "created_at": datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))}
+        return cls.model_validate(data)
 
 
 class RebuttalJudgment(BaseContract):
@@ -400,11 +440,23 @@ class ProductRequirementDoc(BaseContract):
     constraints: list[str]
     non_functional: list[str]
 
+    @classmethod
+    def from_stored(cls, data: dict) -> "ProductRequirementDoc":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        return cls.model_validate(data)
+
 
 class TaskDAG(BaseContract):
     """Planner output: task graph with dependencies + agent assignments."""
     nodes: list["TaskNode"]  # id, desc, depends_on[], agent_role, complexity
     critical_path: list[str]
+
+    @classmethod
+    def from_stored(cls, data: dict) -> "TaskDAG":
+        """Create from stored dict (enums as strings, datetime as ISO strings)."""
+        if "nodes" in data and isinstance(data["nodes"], list):
+            data = {**data, "nodes": [TaskNode.from_stored(node) for node in data["nodes"]]}
+        return cls.model_validate(data)
 
 
 class TaskNode(BaseContract):
@@ -413,6 +465,13 @@ class TaskNode(BaseContract):
     depends_on: list[str] = Field(default_factory=list)
     agent_role: str
     complexity: TaskComplexity
+
+    @classmethod
+    def from_stored(cls, data: dict) -> "TaskNode":
+        """Create from stored dict (enums as strings)."""
+        if isinstance(data.get("complexity"), str):
+            data = {**data, "complexity": TaskComplexity(data["complexity"])}
+        return cls.model_validate(data)
 
 
 class ArchitectDesign(BaseContract):

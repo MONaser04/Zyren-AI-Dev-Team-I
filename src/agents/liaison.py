@@ -12,16 +12,16 @@ from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from agents.base import BaseAgent
+from src.agents.base import BaseAgent
 
 if TYPE_CHECKING:
-    from gateway.llm_client import LLMClient
-    from state.store import EventStore
+    from src.gateway.llm_client import LLMClient
+    from src.state.store import EventStore
 
 
 class LiaisonAgent(BaseAgent):
     """Liaison: human interface — translates workflow state to operator and vice versa.
-    
+
     This agent does NOT have a run() method. It operates via HITL interrupts
     and state notifications only.
     """
@@ -39,7 +39,7 @@ class LiaisonAgent(BaseAgent):
 
     def notify_human(self, workflow_id: str, message: str, severity: str = "info") -> None:
         """Send a notification to the human operator.
-        
+
         In production, this would integrate with Slack, email, dashboard, etc.
         For now, logs the message.
         """
@@ -52,7 +52,7 @@ class LiaisonAgent(BaseAgent):
 
     def request_human_input(self, workflow_id: str, question: str, options: list[str] | None = None) -> str:
         """Request input from human operator (blocking).
-        
+
         In production, this would pause the workflow and wait for human response
         via a dashboard or chat interface.
         """

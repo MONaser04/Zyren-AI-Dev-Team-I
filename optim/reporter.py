@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -202,3 +203,47 @@ def write_reports(
         logger.info("Markdown report written: %s", md_file)
 
     return written
+
+
+# ── Test Compatibility Classes ───────────────────────────────────────────────────
+
+
+@dataclass
+class ReporterConfig:
+    """Configuration for report generation."""
+
+    output_dir: str = "reports"
+    formats: list[str] = None
+
+    def __post_init__(self):
+        if self.formats is None:
+            self.formats = ["json", "markdown"]
+
+
+class OptimisationReporter:
+    """Reporter class for generating optimisation reports."""
+
+    def __init__(self, config: ReporterConfig | None = None) -> None:
+        self.config = config or ReporterConfig()
+
+    def generate(
+        self,
+        report: OptimReport,
+        output_dir: str | Path | None = None,
+        formats: list[str] | None = None,
+    ) -> dict[str, Path]:
+        """Generate reports in specified formats."""
+        return write_reports(
+            report,
+            output_dir or self.config.output_dir,
+            formats=formats or self.config.formats,
+        )
+
+
+def generate_report(
+    report: OptimReport,
+    output_dir: str | Path = "reports",
+    formats: list[str] | None = None,
+) -> dict[str, Path]:
+    """Convenience function to generate reports."""
+    return write_reports(report, output_dir, formats=formats)

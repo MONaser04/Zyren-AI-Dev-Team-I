@@ -1,0 +1,71 @@
+name: Phase 6 Evaluation Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'evals/**'
+      - 'tests/**'
+      - 'config/**'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'evals/**'
+      - 'tests/**'
+      - 'config/**'
+  workflow_dispatch:  # manual trigger
+  schedule:
+    - cron: '0 6 * * 1'  # every Monday at 06:00 UTC
+
+jobs:
+  phase6-eval:
+    runs-on: ubuntu-latest
+    name: Phase 6 — Comprehensive Evaluation
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[eval]"
+
+      - name: Run Phase 6 test suite
+        run: |
+          python -m pytest tests/test_phase6_*.py -v --tb=short -q
+
+      - name: Run full evaluation pipeline
+        run: |
+          python -m evals.orchestrator --quiet
+
+      - name: Archive evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-reports
+          path: reports/phase6_report_*.json
+          retention-days: 30
+
+      - name: Check gates (fail if any gate fails)
+        run: |
+          python -c "
+          import json, glob, sys
+          reports = sorted(glob.glob('reports/phase6_report_*.json'))
+          if not reports:
+              print('No reports found')
+              sys.exit(1)
+          latest = reports[-1]
+          with open(latest) as f:
+              data = json.load(f)
+          if not data.get('overall_pass', False):
+              print(f'Phase 6 gates FAILED: {latest}')
+              sys.exit(1)
+          else:
+              print(f'Phase 6 gates PASSED: {latest}')
+          "

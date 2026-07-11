@@ -11,8 +11,8 @@ from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from agents.base import BaseAgent
-from contracts.schemas import DocsOutput
+from src.agents.base import BaseAgent
+from src.contracts.schemas import DocsOutput
 
 if TYPE_CHECKING:
     from gateway.llm_client import LLMClient

@@ -1,0 +1,9 @@
+Workflow: 738960d205bc4fed
+Events: 6
+
+  [2026-07-10 10:49:46.739015+00:00] task_created
+  [2026-07-10 10:49:58.486909+00:00] routing_decided
+  [2026-07-10 10:50:06.326657+00:00] code_submitted
+  [2026-07-10 10:50:11.118484+00:00] verification_completed
+  [2026-07-10 10:50:15.186833+00:00] review_decided
+  [2026-07-10 10:50:15.188264+00:00] workflow_completed

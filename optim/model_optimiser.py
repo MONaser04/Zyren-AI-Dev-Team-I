@@ -8,6 +8,7 @@ Drops under-performing models and recommends cost-efficient alternatives.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from src.contracts.eval_result import EvalResult
@@ -148,3 +149,61 @@ def recommend_best_model(
             best_model = model_id
 
     return best_model
+
+
+# ── ModelOptimiser Class (for test compatibility) ────────────────────────────────
+
+
+@dataclass
+class ModelRecommendation:
+    """Recommendation for model routing change."""
+
+    agent_role: str
+    current_model: str
+    recommended_model: str
+    action: str  # "keep" | "demote" | "promote" | "remove"
+    reason: str
+    confidence: float
+
+
+class ModelOptimiser:
+    """Optimises model routing based on performance data."""
+
+    def __init__(self, min_success_rate: float = 0.6) -> None:
+        self.min_success_rate = min_success_rate
+
+    def optimise(
+        self,
+        eval_results: list[EvalResult],
+        feedback_store: FeedbackStore,
+    ) -> list[dict[str, Any]]:
+        """Run optimisation and return recommendations."""
+        return optimise_model_routing(
+            eval_results=eval_results,
+            feedback_store=feedback_store,
+            min_success_rate=self.min_success_rate,
+        )
+
+    def recommend(
+        self,
+        tier: str,
+        feedback_store: FeedbackStore,
+        preferred_model: str | None = None,
+    ) -> str:
+        """Recommend best model in tier."""
+        return recommend_best_model(
+            tier=tier,
+            feedback_store=feedback_store,
+            preferred_model=preferred_model,
+        )
+
+
+def recommend_model(
+    tier: str,
+    *,
+    feedback_store: FeedbackStore,
+    preferred_model: str | None = None,
+) -> str:
+    """Convenience wrapper for ModelOptimiser.recommend."""
+    optimiser = ModelOptimiser()
+    return optimiser.recommend(tier, feedback_store, preferred_model)

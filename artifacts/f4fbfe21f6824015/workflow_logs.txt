@@ -1,0 +1,9 @@
+Workflow: f4fbfe21f6824015
+Events: 6
+
+  [2026-07-10 10:44:17.907432+00:00] task_created
+  [2026-07-10 10:44:21.804139+00:00] routing_decided
+  [2026-07-10 10:44:28.669746+00:00] code_submitted
+  [2026-07-10 10:44:33.523860+00:00] verification_completed
+  [2026-07-10 10:45:36.740635+00:00] review_decided
+  [2026-07-10 10:45:36.741257+00:00] workflow_completed

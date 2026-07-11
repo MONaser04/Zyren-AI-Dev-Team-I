@@ -11,15 +11,15 @@ verification.steps module. The TesterAgent is a thin orchestrator.
 
 from __future__ import annotations
 
-from observability.instrumentation import trace_agent_invocation
+from src.observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from agents.base import BaseAgent
-from verification.runner import VerificationRunner
+from src.agents.base import BaseAgent
+from src.verification.runner import VerificationRunner
 
 if TYPE_CHECKING:
-    from contracts.schemas import CodePatch, VerificationReport
+    from src.contracts.schemas import CodePatch, VerificationReport
 
 
 class TesterAgent(BaseAgent):

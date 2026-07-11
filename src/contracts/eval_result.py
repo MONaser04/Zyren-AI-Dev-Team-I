@@ -1,6 +1,6 @@
 """
 EvalResult Contract — Phase 5
-==============================
+=============================
 Structured record representing the outcome of a single evaluation task
 run through the AI Dev Team pipeline.
 """
@@ -12,6 +12,14 @@ from typing import Any
 
 
 @dataclass
+class EvalIssue:
+    """A single issue found during evaluation."""
+    source: str = ""           # e.g., "pytest", "mypy", "ruff", "bandit"
+    severity: str = "warning"  # "info", "warning", "error", "critical"
+    message: str = ""          # Human-readable description
+
+
+@dataclass
 class EvalResult:
     """Outcome from running one golden task through the full pipeline.
 
@@ -19,7 +27,7 @@ class EvalResult:
         workflow_id: ID of the workflow instance that was evaluated.
         task_id: ID of the golden / SWE-bench task.
         passed: Whether the evaluation passed overall threshold.
-        overall_score: Aggregate weighted score (0.0–1.0).
+        overall_score: Aggregate weighted score (0.0-1.0).
         test_pass_rate: Fraction of correctness tests passed.
         lint_score: Lint analysis score (1.0 = clean).
         type_check_passed: Whether type checking passed.

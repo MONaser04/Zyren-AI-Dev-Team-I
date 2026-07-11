@@ -1,0 +1,149 @@
+# Router Evaluation Dataset — Phase 6
+# ====================================
+# Labelled routing samples for evaluating the semantic router.
+# Each sample includes an input text and the expected correct agent.
+#
+# Categories tested: architect, coder, critic, debugger, devops, researcher
+# Edge cases: ambiguous inputs, short prompts, mixed signals, adversarial
+
+samples:
+  # ── Architect category ──
+  - id: "arc-01"
+    input: "Design a high-level system architecture for a real-time chat application"
+    expected_agent: "architect"
+
+  - id: "arc-02"
+    input: "Plan the component structure for a microservices-based e-commerce platform"
+    expected_agent: "architect"
+
+  - id: "arc-03"
+    input: "I need a detailed system design document covering data flow and API contracts"
+    expected_agent: "architect"
+
+  # ── Coder category ──
+  - id: "cod-01"
+    input: "Implement a Python function that sorts a list of dictionaries by a given key"
+    expected_agent: "coder"
+
+  - id: "cod-02"
+    input: "Write a TypeScript class for managing WebSocket connections"
+    expected_agent: "coder"
+
+  - id: "cod-03"
+    input: "Build a REST API endpoint for user registration with input validation"
+    expected_agent: "coder"
+
+  - id: "cod-04"
+    input: "Create a React component that renders a data table with sorting and filtering"
+    expected_agent: "coder"
+
+  # ── Critic category ──
+  - id: "crt-01"
+    input: "Review this pull request for security vulnerabilities and code quality issues"
+    expected_agent: "critic"
+
+  - id: "crt-02"
+    input: "Evaluate the test coverage of this module and suggest improvements"
+    expected_agent: "critic"
+
+  - id: "crt-03"
+    input: "Assess whether this architecture follows SOLID principles"
+    expected_agent: "critic"
+
+  - id: "crt-04"
+    input: "Check this code for potential race conditions and memory leaks"
+    expected_agent: "critic"
+
+  # ── Debugger category ──
+  - id: "dbg-01"
+    input: "Debug this production error: NullPointerException in payment processing"
+    expected_agent: "debugger"
+
+  - id: "dbg-02"
+    input: "Fix the broken authentication flow - users can't log in after the update"
+    expected_agent: "debugger"
+
+  - id: "dbg-03"
+    input: "The CI pipeline is failing with an obscure dependency resolution error"
+    expected_agent: "debugger"
+
+  - id: "dbg-04"
+    input: "This function returns incorrect results for negative inputs - find the bug"
+    expected_agent: "debugger"
+
+  # ── DevOps category ──
+  - id: "ops-01"
+    input: "Deploy this application to Kubernetes with auto-scaling configuration"
+    expected_agent: "devops"
+
+  - id: "ops-02"
+    input: "Set up a CI/CD pipeline with Docker, GitHub Actions, and staging environments"
+    expected_agent: "devops"
+
+  - id: "ops-03"
+    input: "Configure infrastructure as code using Terraform for AWS"
+    expected_agent: "devops"
+
+  # ── Researcher category ──
+  - id: "res-01"
+    input: "Research the best vector database for our semantic search use case"
+    expected_agent: "researcher"
+
+  - id: "res-02"
+    input: "Analyse the trade-offs between gRPC and REST for internal service communication"
+    expected_agent: "researcher"
+
+  - id: "res-03"
+    input: "Study and compare different caching strategies for high-traffic APIs"
+    expected_agent: "researcher"
+
+  # ── Ambiguous / mixed-signal inputs (stress test) ──
+  - id: "amb-01"
+    input: "Build and design a system"
+    expected_agent: "architect"  # "design" > "build"
+
+  - id: "amb-02"
+    input: "Review and fix the bug"
+    expected_agent: "critic"  # "review" appears before "fix"
+
+  - id: "amb-03"
+    input: "Deploy after checking the code"
+    expected_agent: "critic"  # "check" > "deploy" minimal signal
+
+  - id: "amb-04"
+    input: "Analyse the error and implement a fix"
+    expected_agent: "debugger"  # "error" + "fix"
+
+  # ── Short / underspecified inputs ──
+  - id: "sho-01"
+    input: "Fix it"
+    expected_agent: "debugger"
+
+  - id: "sho-02"
+    input: "Review"
+    expected_agent: "critic"
+
+  - id: "sho-03"
+    input: "Build it"
+    expected_agent: "coder"
+
+  - id: "sho-04"
+    input: "Plan"
+    expected_agent: "architect"
+
+# Evaluation configuration
+config:
+  floor:
+    min_accuracy: 0.70
+    min_per_agent_accuracy: 0.60
+    max_drift_score: 0.30
+    max_latency_p95_ms: 500.0
+    require_confidence_calibration: true
+  window_size: 5
+  expected_agents:
+    - architect
+    - coder
+    - critic
+    - debugger
+    - devops
+    - researcher

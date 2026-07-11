@@ -348,10 +348,10 @@ class TestConvergenceIntegration:
 
     def test_convergence_stops_early(self):
         """Test that convergence detection can stop optimisation early."""
-        from optim.convergence import check_convergence, ConvergenceConfig
+        from optim.convergence import ConvergenceDetector, ConvergenceConfig
         from src.contracts.eval_result import EvalResult
 
-        # Simulate scores that plateau quickly
+        # Simulate scores that plateau quickly - 10 rounds
         results = [
             EvalResult(workflow_id=f"w{i}", task_id="t", overall_score=0.7 + i * 0.001)
             for i in range(10)
@@ -365,11 +365,17 @@ class TestConvergenceIntegration:
             min_score=0.5,
         )
 
-        conv_result = check_convergence(results, config)
+        detector = ConvergenceDetector(config)
+        
+        # Simulate 5 rounds
+        last_result = None
+        for i in range(5):
+            round_results = [results[i]]  # One result per round
+            last_result = detector.record(round_results)
 
         # Should converge because improvements are < 1%
-        assert conv_result.converged is True
-        assert conv_result.improvement < 0.01
+        assert last_result.converged is True
+        assert last_result.improvement < 0.01
 
     def test_no_convergence_when_improving(self):
         """Test no convergence when scores keep improving."""

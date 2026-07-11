@@ -125,3 +125,58 @@ def compute_round_score(
     pass_rate = round(passed_count / len(scores), 4)
 
     return mean_score, median_score, pass_rate
+
+
+# ============================================================
+# Phase 5 Test Compatibility Functions
+# ============================================================
+
+
+def score_result(
+    eval_result: "EvalResult" | dict[str, Any],
+    weights: dict[str, float] | None = None,
+) -> float:
+    """Score a single evaluation result using score_workflow_result."""
+    if hasattr(eval_result, "overall_score"):  # EvalResult object
+        return score_workflow_result(
+            test_pass_rate=eval_result.test_pass_rate,
+            lint_score=eval_result.lint_score,
+            type_check_passed=eval_result.type_check_passed,
+            security_issues_count=eval_result.security_issues_count,
+            iterations_used=eval_result.iterations_taken,
+            max_iterations=5,  # Default
+            weights=weights,
+        )
+    else:  # dict
+        return score_workflow_result(
+            test_pass_rate=float(eval_result.get("test_pass_rate", 0)),
+            lint_score=float(eval_result.get("lint_score", 0)),
+            type_check_passed=bool(eval_result.get("type_check_passed", True)),
+            security_issues_count=int(eval_result.get("security_issues_count", 0)),
+            iterations_used=int(eval_result.get("iterations_taken", 1)),
+            max_iterations=5,
+            weights=weights,
+        )
+
+
+def score_batch(
+    eval_results: list["EvalResult"] | list[dict[str, Any]],
+    weights: dict[str, float] | None = None,
+) -> list[float]:
+    """Score multiple evaluation results."""
+    return [score_result(r, weights) for r in eval_results]
+
+
+class CompositeScorer:
+    """Composite scorer with configurable weights."""
+
+    def __init__(self, weights: dict[str, float] | None = None):
+        self.weights = weights
+
+    def score(self, eval_result: "EvalResult" | dict[str, Any]) -> float:
+        return score_result(eval_result, self.weights)
+
+    def score_batch(
+        self, eval_results: list["EvalResult"] | list[dict[str, Any]]
+    ) -> list[float]:
+        return [self.score(r) for r in eval_results]

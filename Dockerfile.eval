@@ -1,0 +1,38 @@
+# Dockerfile for Phase 6 Evaluation Stack
+# ========================================
+# Provides reproducible evaluation environment with all dependencies
+# for running the full Phase 6 pipeline in CI/CD.
+
+FROM python:3.12-slim
+
+LABEL org="AI_DEV_TEAM"
+LABEL phase="6"
+LABEL component="evaluation"
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash evaluator
+USER evaluator
+WORKDIR /home/evaluator/app
+
+# Copy project files
+COPY --chown=evaluator:evaluator pyproject.toml uv.lock ./
+COPY --chown=evaluator:evaluator src/ ./src/
+COPY --chown=evaluator:evaluator evals/ ./evals/
+COPY --chown=evaluator:evaluator config/ ./config/
+COPY --chown=evaluator:evaluator tests/ ./tests/
+
+# Install dependencies (requires uv or pip)
+RUN pip install --no-cache-dir uv && \
+    uv sync --frozen || pip install -e ".[eval]"
+
+# Pre-warm judge calibration cache (optional)
+RUN python -c "from evals.judges.calibration import run_judge_calibration; run_judge_calibration(min_alignment=0.70)" || true
+
+# Default command: run full evaluation pipeline
+CMD ["python", "-m", "evals.orchestrator", "--quiet"]

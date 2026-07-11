@@ -23,10 +23,10 @@ from typing import TYPE_CHECKING, Any, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from agents.coder import CoderAgent
-from agents.critic import CriticAgent
-from agents.tester import TesterAgent
-from contracts.schemas import (
+from src.agents.coder import CoderAgent
+from src.agents.critic import CriticAgent
+from src.agents.tester import TesterAgent
+from src.contracts.schemas import (
     CodePatch,
     RebuttalOutcome,
     RebuttalRequest,
@@ -257,9 +257,29 @@ def _critic_node(
     )
     event_store.append(event)
 
+    # Store enum values as strings in state for LangGraph serialization compatibility
+    # Pydantic will auto-convert string values to enum instances during validation
     return {
         **state,
-        "review_decision": decision.model_dump(),
+        "review_decision": {
+            "task_id": decision.task_id,
+            "workflow_id": decision.workflow_id,
+            "iteration": decision.iteration,
+            "verdict": decision.verdict.value,
+            "justification": decision.justification,
+            "issues": [
+                {
+                    "description": issue.description,
+                    "severity": issue.severity.value,
+                    "suggestion": issue.suggestion,
+                    "source": issue.source,
+                }
+                for issue in decision.issues
+            ],
+            "feedback_for_coder": decision.feedback_for_coder,
+            "escalation_level": decision.escalation_level.value,
+            "created_at": decision.created_at.isoformat() if decision.created_at else None,
+        },
         "verdict": decision.verdict.value,
         "feedback": decision.feedback_for_coder,
         "event_version": version,
@@ -271,8 +291,8 @@ def _coder_rebut_node(
     state: GraphState, coder: CoderAgent, event_store: EventStore
 ) -> dict[str, Any]:
     """Coder considers and optionally submits a rebuttal."""
-    decision = ReviewDecision.model_validate(state["review_decision"])
-    report = VerificationReport.model_validate(state["verification_report"])
+    decision = ReviewDecision.from_stored(state["review_decision"])
+    report = VerificationReport.from_stored(state["verification_report"])
 
     rebuttal = coder.rebut(decision, report)
 
@@ -299,7 +319,7 @@ def _coder_rebut_node(
     return {
         **state,
         "rebuttal_used": True,
-        "rebuttal_request": rebuttal.model_dump(),
+        "rebuttal_request": rebuttal.model_dump(mode="json"),
         "event_version": version,
         "last_event_id": event.event_id,
     }
@@ -318,9 +338,9 @@ def _judge_rebuttal_node(
             "rebuttal_outcome": "no_rebuttal",
         }
 
-    rebuttal = RebuttalRequest.model_validate(rebuttal_data)
-    decision = ReviewDecision.model_validate(state["review_decision"])
-    report = VerificationReport.model_validate(state["verification_report"])
+    rebuttal = RebuttalRequest.from_stored(rebuttal_data)
+    decision = ReviewDecision.from_stored(state["review_decision"])
+    report = VerificationReport.from_stored(state["verification_report"])
 
     judgment = critic.judge_rebuttal(rebuttal, decision, report)
 
@@ -550,10 +570,11 @@ def _architect_node(
     state: GraphState, agent: "ArchitectAgent", event_store: "EventStore"
 ) -> dict[str, Any]:
     from state.events import architect_design_event
-    from contracts.schemas import TaskDAG
+    from contracts.schemas import TaskDAG, ProductRequirementDoc
 
-    dag = TaskDAG.model_validate(state.get("task_dag", {})) if "task_dag" in state else None
-    design = agent.run(dag)
+    dag = TaskDAG.from_stored(state.get("task_dag", {})) if "task_dag" in state else None
+    prd = ProductRequirementDoc.from_stored(state.get("product_requirements", {})) if "product_requirements" in state else None
+    design = agent.run(prd, dag)
     
     version = _next_version(state)
     event = architect_design_event(
@@ -765,19 +786,19 @@ def build_feedback_loop(
     """Compile the LangGraph state machine with all agents (Phase 4)."""
     from functools import partial
     
-    from agents.coder import CoderAgent
-    from agents.tester import TesterAgent
-    from agents.critic import CriticAgent
-    from orchestrator.semantic_router import SemanticRouter
-    from agents.product_analyst import ProductAnalystAgent
-    from agents.planner import PlannerAgent
-    from agents.architect import ArchitectAgent
-    from agents.ux import UXAgent
-    from agents.db_engineer import DBEngineerAgent
-    from agents.security import SecurityAgent
-    from agents.researcher import ResearcherAgent
-    from agents.integrator import IntegratorAgent
-    from agents.docs import DocsAgent
+    from src.agents.coder import CoderAgent
+    from src.agents.tester import TesterAgent
+    from src.agents.critic import CriticAgent
+    from src.orchestrator.semantic_router import SemanticRouter
+    from src.agents.product_analyst import ProductAnalystAgent
+    from src.agents.planner import PlannerAgent
+    from src.agents.architect import ArchitectAgent
+    from src.agents.ux import UXAgent
+    from src.agents.db_engineer import DBEngineerAgent
+    from src.agents.security import SecurityAgent
+    from src.agents.researcher import ResearcherAgent
+    from src.agents.integrator import IntegratorAgent
+    from src.agents.docs import DocsAgent
 
     coder = CoderAgent(agent_id="c1", llm_client=llm_client)
     tester = TesterAgent(agent_id="t1")

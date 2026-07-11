@@ -1,0 +1,23 @@
+{
+  "workflow_id": "7e070d989b30457c",
+  "artifacts": [
+    {
+      "workflow_id": "7e070d989b30457c",
+      "iteration": 1,
+      "artifact_type": "final_code_patch",
+      "path": "7e070d989b30457c\\final_patch_iter1.json",
+      "size_bytes": 52,
+      "created_at": 1783678672.8884542,
+      "metadata": {}
+    },
+    {
+      "workflow_id": "7e070d989b30457c",
+      "iteration": 1,
+      "artifact_type": "logs",
+      "path": "7e070d989b30457c\\workflow_logs.txt",
+      "size_bytes": 39,
+      "created_at": 1783678672.890218,
+      "metadata": {}
+    }
+  ]
+}

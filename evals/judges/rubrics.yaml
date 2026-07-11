@@ -1,0 +1,96 @@
+# Rubrics for LLM-as-Judge Evaluation
+# Clear, unambiguous rubrics for each evaluation category.
+# Used to calibrate the judge and ensure consistent scoring.
+
+# ============================================================
+# CORRECTNESS RUBRIC (1-10 scale)
+# ============================================================
+correctness:
+  description: "Does the code correctly implement the requested functionality?"
+  levels:
+    10: "Perfect implementation. All requirements met, handles all edge cases correctly."
+    9: "Correct implementation with minor cosmetic issues (e.g., off-by-one in non-critical path)."
+    8: "Correct core logic, minor bugs in edge cases that don't affect main functionality."
+    7: "Mostly correct but has a noticeable bug in a secondary feature."
+    6: "Core functionality works but has significant gaps in requirements coverage."
+    5: "Partially correct - implements some requirements but misses key ones."
+    4: "Major logic errors; produces wrong output for common inputs."
+    3: "Fundamentally flawed approach; doesn't solve the problem."
+    2: "Code runs but produces completely incorrect results."
+    1: "Does not address the task at all; completely wrong approach."
+
+# ============================================================
+# CODE QUALITY RUBRIC (1-10 scale)
+# ============================================================
+code_quality:
+  description: "Is the code well-structured, readable, maintainable, and testable?"
+  levels:
+    10: "Exemplary: Clean architecture, DRY, SOLID principles, excellent naming, highly testable."
+    9: "Excellent: Well-structured, good abstractions, minor style nits only."
+    8: "Good: Clear structure, reasonable abstractions, some repetition or minor complexity."
+    7: "Acceptable: Works but has some code smells (long functions, unclear names, some duplication)."
+    6: "Below average: Noticeable structural issues, hard to follow logic, significant duplication."
+    5: "Poor: Spaghetti code, no clear structure, hard to maintain or test."
+    4: "Very poor: Inconsistent style, magic numbers, no separation of concerns."
+    3: "Bad: Copy-paste code, no functions/classes, global state abuse."
+    2: "Terrible: Unreadable, no structure, appears auto-generated without thought."
+    1: "Incomprehensible: No discernible structure or logic."
+
+# ============================================================
+# DOCUMENTATION RUBRIC (1-10 scale)
+# ============================================================
+documentation:
+  description: "Are docstrings, comments, and inline documentation present and useful?"
+  levels:
+    10: "Complete: Module/class/function docstrings with args, returns, raises, examples; inline comments for complex logic."
+    9: "Excellent: Comprehensive docstrings, good examples, minor omissions in inline comments."
+    8: "Good: All public APIs documented with args/returns, some inline comments."
+    7: "Adequate: Basic docstrings present for main functions, missing some details."
+    6: "Minimal: Only function signatures with one-line descriptions, no args/returns docs."
+    5: "Sparse: Few docstrings, mostly missing parameter/return documentation."
+    4: "Poor: Only occasional comments, no formal docstrings."
+    3: "Very poor: Misleading or outdated documentation."
+    2: "Almost none: Single comment or completely absent."
+    1: "Zero documentation: No comments, no docstrings, no README."
+
+# ============================================================
+# ERROR HANDLING RUBRIC (1-10 scale)
+# ============================================================
+error_handling:
+  description: "Are edge cases, exceptions, and invalid inputs properly handled?"
+  levels:
+    10: "Comprehensive: Validates all inputs, specific exception types, graceful degradation, clear error messages."
+    9: "Excellent: Handles all expected edge cases, good exception hierarchy, informative errors."
+    8: "Good: Handles most edge cases, uses appropriate built-in exceptions."
+    7: "Acceptable: Basic input validation, catches obvious errors, generic exception handling."
+    6: "Minimal: Some validation but misses common edge cases (empty input, null, negative)."
+    5: "Weak: Only handles happy path, crashes on invalid input."
+    4: "Poor: Bare try/except with no specificity, swallows exceptions."
+    3: "Very poor: No error handling, assumes perfect inputs."
+    2: "Dangerous: Catches all exceptions silently, hides bugs."
+    1: "None: No error handling whatsoever, will crash on any anomaly."
+
+# ============================================================
+# COMPOSITE RUBRIC FOR BINARY/3-POINT SCORING
+# ============================================================
+# For low-precision evaluation (reduces variance)
+composite_binary:
+  description: "Overall PASS/FAIL based on weighted categories"
+  weights:
+    correctness: 0.4
+    code_quality: 0.3
+    documentation: 0.15
+    error_handling: 0.15
+  pass_threshold: 0.7  # Weighted average >= 0.7 = PASS
+
+composite_3point:
+  description: "Overall EXCELLENT / ACCEPTABLE / NEEDS_WORK"
+  weights:
+    correctness: 0.4
+    code_quality: 0.3
+    documentation: 0.15
+    error_handling: 0.15
+  thresholds:
+    excellent: 0.85
+    acceptable: 0.65
+    # below 0.65 = NEEDS_WORK

@@ -18,13 +18,13 @@ import time
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from observability.metrics import (
+from src.observability.metrics import (
     record_agent_invocation,
     record_operation_duration,
     record_token_usage,
     record_tool_execution,
 )
-from observability.tracing import (
+from src.observability.tracing import (
     GEN_AI_AGENT_ROLE,
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,

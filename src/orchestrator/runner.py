@@ -19,13 +19,19 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from src.gateway.client import LiteLLMClient
     from src.state.store import EventStore
+    from src.orchestrator.graph import GraphState
 
-from src.orchestrator.graph import GraphState, build_feedback_loop
 from src.orchestrator.convergence import create_convergence_manager, OrchestratorConvergence
 from src.orchestrator.artifacts import create_artifact_manager, ArtifactManager
 from src.orchestrator.hitl import create_hitl_manager, HITLManager, ApprovalStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _get_graph_components():
+    """Lazy import to avoid circular dependency with agents module."""
+    from src.orchestrator.graph import GraphState, build_feedback_loop
+    return GraphState, build_feedback_loop
 
 
 # ============================================================
@@ -146,7 +152,8 @@ def run_workflow(
             policy=hitl_cfg.get("policy", "approve"),
         )
 
-    # Build the graph
+    # Build the graph (lazy import)
+    GraphState, build_feedback_loop = _get_graph_components()
     graph = build_feedback_loop(
         event_store=event_store,
         llm_client=llm_client,

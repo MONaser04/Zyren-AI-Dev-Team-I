@@ -1,6 +1,6 @@
 """
 Base Agent — Abstract Interface for All Role Agents
-=====================================================
+===================================================
 
 Every agent in the system inherits from BaseAgent and implements
 a typed run() method that takes a contract in and returns a contract out.
@@ -8,14 +8,26 @@ a typed run() method that takes a contract in and returns a contract out.
 
 from __future__ import annotations
 
-from observability.instrumentation import trace_agent_invocation
-
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from gateway.llm_client import LLMClient
+    from src.gateway.llm_client import LLMClient
+
+
+@dataclass
+class AgentResult:
+    """Standard result container for agent execution."""
+    verdict: str
+    data: dict
+    summary: str
+
+    @property
+    def status(self) -> str:
+        """Alias for verdict for test compatibility."""
+        return self.verdict
 
 
 class BaseAgent(ABC):

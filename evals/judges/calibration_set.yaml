@@ -1,0 +1,353 @@
+# Calibration Set for LLM-as-Judge
+# ============================================================
+# يدوياً: 30-50 مهمة مع تسميات بشرية ذهبية (human labels)
+# يستخدم لمعايرة القاضي حتى يصل Cohen's κ ≥ 0.6
+# ============================================================
+
+calibration_tasks:
+  # ── Category: CORRECTNESS (الخوارزمية صحيحة؟) ─────────────────────────
+  - id: "cal_correct_01"
+    category: "correctness"
+    task_description: "Write a function fibonacci(n: int) -> int that returns the n-th Fibonacci number iteratively."
+    code: |
+      def fibonacci(n: int) -> int:
+          """Return the n-th Fibonacci number (iterative)."""
+          if n < 0:
+              raise ValueError("n must be non-negative")
+          a, b = 0, 1
+          for _ in range(n):
+              a, b = b, a + b
+          return a
+    human_scores:
+      correctness: 10
+      code_quality: 9
+      documentation: 8
+      error_handling: 9
+    expected_verdict: "PASS"
+    notes: "Correct, well-documented, handles edge case"
+
+  - id: "cal_correct_02"
+    category: "correctness"
+    task_description: "Write a function fibonacci(n: int) -> int that returns the n-th Fibonacci number iteratively."
+    code: |
+      def fibonacci(n: int) -> int:
+          if n <= 1:
+              return n
+          return fibonacci(n-1) + fibonacci(n-2)  # Recursive - WRONG per spec
+    human_scores:
+      correctness: 3  # Recursive not iterative
+      code_quality: 5
+      documentation: 2
+      error_handling: 1
+    expected_verdict: "FAIL"
+    notes: "Violates iterative requirement, no error handling"
+
+  - id: "cal_correct_03"
+    category: "correctness"
+    task_description: "Implement is_palindrome(s: str) -> bool ignoring case, spaces, punctuation."
+    code: |
+      import re
+      def is_palindrome(s: str) -> bool:
+          cleaned = re.sub(r'[^a-zA-Z0-9]', '', s).lower()
+          return cleaned == cleaned[::-1]
+    human_scores:
+      correctness: 10
+      code_quality: 8
+      documentation: 5
+      error_handling: 7
+    expected_verdict: "PASS"
+    notes: "Correct logic, missing docstring"
+
+  - id: "cal_correct_04"
+    category: "correctness"
+    task_description: "Implement is_palindrome(s: str) -> bool ignoring case, spaces, punctuation."
+    code: |
+      def is_palindrome(s: str) -> bool:
+          return s == s[::-1]  # Wrong - doesn't ignore case/spaces/punct
+    human_scores:
+      correctness: 2
+      code_quality: 4
+      documentation: 1
+      error_handling: 1
+    expected_verdict: "FAIL"
+    notes: "Fails core requirement"
+
+  # ── Category: CODE_QUALITY (جودة الكود؟) ─────────────────────────
+  - id: "cal_quality_01"
+    category: "code_quality"
+    task_description: "Create a Stack[T] generic class with push, pop, peek, is_empty."
+    code: |
+      from typing import Generic, TypeVar, List
+      T = TypeVar('T')
+
+      class Stack(Generic[T]):
+          def __init__(self):
+              self._items: List[T] = []
+          def push(self, item: T) -> None:
+              self._items.append(item)
+          def pop(self) -> T:
+              if not self._items:
+                  raise IndexError("pop from empty stack")
+              return self._items.pop()
+          def peek(self) -> T:
+              if not self._items:
+                  raise IndexError("peek from empty stack")
+              return self._items[-1]
+          def is_empty(self) -> bool:
+              return len(self._items) == 0
+    human_scores:
+      correctness: 10
+      code_quality: 10
+      documentation: 6
+      error_handling: 10
+    expected_verdict: "PASS"
+    notes: "Clean, generic, proper errors, minor doc gap"
+
+  - id: "cal_quality_02"
+    category: "code_quality"
+    task_description: "Create a Stack[T] generic class with push, pop, peek, is_empty."
+    code: |
+      class Stack:
+          def __init__(self):
+              self.items = []
+          def push(self, item):
+              self.items.append(item)
+          def pop(self):
+              return self.items.pop()
+          def peek(self):
+              return self.items[-1]
+          def is_empty(self):
+              return len(self.items) == 0
+    human_scores:
+      correctness: 8
+      code_quality: 4  # No generics, no error handling
+      documentation: 2
+      error_handling: 2
+    expected_verdict: "FAIL"
+    notes: "Missing generics, type hints, error handling"
+
+  - id: "cal_quality_03"
+    category: "code_quality"
+    task_description: "Write a FastAPI app with POST /users and GET /users/{id}."
+    code: |
+      from fastapi import FastAPI, HTTPException
+      from pydantic import BaseModel
+      from typing import Dict
+
+      app = FastAPI()
+      users: Dict[int, dict] = {}
+      counter = 0
+
+      class UserCreate(BaseModel):
+          name: str
+          email: str
+
+      class User(UserCreate):
+          id: int
+
+      @app.post("/users", response_model=User, status_code=201)
+      def create_user(user: UserCreate):
+          global counter
+          counter += 1
+          u = User(id=counter, **user.model_dump())
+          users[counter] = u
+          return u
+
+      @app.get("/users/{user_id}", response_model=User)
+      def get_user(user_id: int):
+          if user_id not in users:
+              raise HTTPException(404, "User not found")
+          return users[user_id]
+    human_scores:
+      correctness: 10
+      code_quality: 9
+      documentation: 7
+      error_handling: 9
+    expected_verdict: "PASS"
+    notes: "Well-structured FastAPI, good validation"
+
+  # ── Category: DOCUMENTATION (التوثيق؟) ─────────────────────────
+  - id: "cal_doc_01"
+    category: "documentation"
+    task_description: "Write a function with full docstring, type hints, and 3 tests."
+    code: |
+      def fibonacci(n: int) -> int:
+          """
+          Return the n-th Fibonacci number (iterative).
+          
+          Args:
+              n: Non-negative integer index.
+          
+          Returns:
+              The n-th Fibonacci number (0-indexed: fib(0)=0, fib(1)=1).
+          
+          Raises:
+              ValueError: If n is negative.
+          
+          Examples:
+              >>> fibonacci(0)
+              0
+              >>> fibonacci(5)
+              5
+          """
+          if n < 0:
+              raise ValueError("n must be non-negative")
+          a, b = 0, 1
+          for _ in range(n):
+              a, b = b, a + b
+          return a
+
+      assert fibonacci(0) == 0
+      assert fibonacci(1) == 1
+      assert fibonacci(5) == 5
+    human_scores:
+      correctness: 10
+      code_quality: 9
+      documentation: 10
+      error_handling: 9
+    expected_verdict: "PASS"
+    notes: "Excellent docstring with args, returns, raises, examples"
+
+  - id: "cal_doc_02"
+    category: "documentation"
+    task_description: "Write a function with full docstring, type hints, and 3 tests."
+    code: |
+      def fib(n):
+          a, b = 0, 1
+          for _ in range(n):
+              a, b = b, a + b
+          return a
+      assert fib(0) == 0
+      assert fib(1) == 1
+    human_scores:
+      correctness: 8
+      code_quality: 5
+      documentation: 1
+      error_handling: 1
+    expected_verdict: "FAIL"
+    notes: "No docstring, no type hints, only 2 tests, no error handling"
+
+  # ── Category: ERROR_HANDLING (معالجة الأخطاء؟) ─────────────────────────
+  - id: "cal_error_01"
+    category: "error_handling"
+    task_description: "Write fetch_json(url: str) -> dict with retry (3x), timeout, error handling."
+    code: |
+      import aiohttp
+      import asyncio
+      from typing import Dict
+
+      async def fetch_json(url: str) -> Dict:
+          """
+          Fetch JSON from URL with retry and error handling.
+          
+          Args:
+              url: The URL to fetch.
+          
+          Returns:
+              Parsed JSON response as dict.
+          
+          Raises:
+              aiohttp.ClientError: On connection/HTTP errors after retries.
+              ValueError: If response is not valid JSON.
+          """
+          timeout = aiohttp.ClientTimeout(total=10)
+          async with aiohttp.ClientSession(timeout=timeout) as session:
+              for attempt in range(3):
+                  try:
+                      async with session.get(url) as resp:
+                          resp.raise_for_status()
+                          return await resp.json()
+                  except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                      if attempt == 2:
+                          raise
+                      await asyncio.sleep(2 ** attempt)
+      # Tests would be in separate test file
+    human_scores:
+      correctness: 10
+      code_quality: 9
+      documentation: 9
+      error_handling: 10
+    expected_verdict: "PASS"
+    notes: "Proper retry, timeout, specific exceptions, good docstring"
+
+  - id: "cal_error_02"
+    category: "error_handling"
+    task_description: "Write fetch_json(url: str) -> dict with retry (3x), timeout, error handling."
+    code: |
+      import requests
+      def fetch_json(url: str) -> dict:
+          return requests.get(url).json()
+    human_scores:
+      correctness: 5
+      code_quality: 3
+      documentation: 2
+      error_handling: 1
+    expected_verdict: "FAIL"
+    notes: "No retry, no timeout, no error handling, sync not async"
+
+  # ── Mixed/Edge Cases ─────────────────────────
+  - id: "cal_mixed_01"
+    category: "mixed"
+    task_description: "Implement a rate limiter with sliding window."
+    code: |
+      import time
+      from collections import deque
+      from threading import Lock
+      from typing import Dict
+
+      class RateLimiter:
+          def __init__(self, max_requests: int, window_seconds: float):
+              self.max_requests = max_requests
+              self.window_seconds = window_seconds
+              self._requests: Dict[str, deque] = {}
+              self._lock = Lock()
+
+          def allow_request(self, client_id: str) -> bool:
+              now = time.monotonic()
+              with self._lock:
+                  if client_id not in self._requests:
+                      self._requests[client_id] = deque()
+                  dq = self._requests[client_id]
+                  # Remove old entries
+                  while dq and dq[0] <= now - self.window_seconds:
+                      dq.popleft()
+                  if len(dq) < self.max_requests:
+                      dq.append(now)
+                      return True
+                  return False
+
+          def reset(self, client_id: str) -> None:
+              with self._lock:
+                  if client_id in self._requests:
+                      self._requests[client_id].clear()
+    human_scores:
+      correctness: 10
+      code_quality: 9
+      documentation: 6
+      error_handling: 8
+    expected_verdict: "PASS"
+    notes: "Thread-safe, sliding window correct, minor doc gap"
+
+  - id: "cal_mixed_02"
+    category: "mixed"
+    task_description: "Implement SQL sanitizer to prevent injection."
+    code: |
+      def sanitize_sql(value: str) -> str:
+          return value.replace("'", "''").replace(";", "")
+    human_scores:
+      correctness: 4
+      code_quality: 4
+      documentation: 3
+      error_handling: 2
+    expected_verdict: "FAIL"
+    notes: "Naive sanitization, misses many attack vectors, no parameterized query recommendation"
+
+# Calibration Configuration
+calibration_config:
+  min_kappa: 0.6
+  target_agreement: 0.8
+  categories: ["correctness", "code_quality", "documentation", "error_handling"]
+  score_scale: "1-10"  # Will be normalized to 0-1
+  judge_model: "critic"  # Different model family from coder
+  num_calibration_rounds: 3
+  randomize_order: true
