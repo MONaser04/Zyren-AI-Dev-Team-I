@@ -9,10 +9,10 @@ from __future__ import annotations
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 
-from src.orchestrator.runner import run_workflow, WorkflowResult
-from src.orchestrator.convergence import create_convergence_manager, OrchestratorConvergence
-from src.orchestrator.artifacts import create_artifact_manager, ArtifactManager
-from src.orchestrator.hitl import (
+from orchestrator.runner import run_workflow, WorkflowResult
+from orchestrator.convergence import create_convergence_manager, OrchestratorConvergence
+from orchestrator.artifacts import create_artifact_manager, ArtifactManager
+from orchestrator.hitl import (
     create_hitl_manager,
     HITLManager,
     ApprovalStatus,
@@ -40,7 +40,7 @@ class TestConvergenceManager:
         mgr = create_convergence_manager(min_samples=2, window_size=2)
 
         # Mock EvalResult
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
         r1 = EvalResult(workflow_id="w1", task_id="t1", overall_score=0.5, passed=False)
         r2 = EvalResult(workflow_id="w2", task_id="t2", overall_score=0.52, passed=False)
         r3 = EvalResult(workflow_id="w3", task_id="t3", overall_score=0.53, passed=False)
@@ -65,7 +65,7 @@ class TestConvergenceManager:
             min_score=0.5,
         )
 
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
         # Scores that plateau
         scores = [0.6, 0.61, 0.615, 0.617, 0.618]
         for s in scores:
@@ -136,7 +136,7 @@ class TestHITLManager:
     def test_auto_approval_backend(self):
         """Test auto-approval backend."""
         backend = AutoApprovalBackend(policy="approve")
-        from src.orchestrator.hitl import ApprovalRequest
+        from orchestrator.hitl import ApprovalRequest
         req = ApprovalRequest(
             workflow_id="w1",
             iteration=1,
@@ -150,7 +150,7 @@ class TestHITLManager:
     def test_auto_reject_backend(self):
         """Test auto-reject backend."""
         backend = AutoApprovalBackend(policy="reject")
-        from src.orchestrator.hitl import ApprovalRequest
+        from orchestrator.hitl import ApprovalRequest
         req = ApprovalRequest(
             workflow_id="w1",
             iteration=1,
@@ -270,7 +270,7 @@ class TestEvaluationBatch:
     @patch("src.orchestrator.runner.run_workflow")
     def test_run_evaluation_batch(self, mock_run_workflow):
         """Test batch evaluation runner."""
-        from src.orchestrator.runner import WorkflowResult, run_evaluation_batch
+        from orchestrator.runner import WorkflowResult, run_evaluation_batch
 
         mock_run_workflow.side_effect = [
             WorkflowResult(workflow_id="w1", success=True, iterations=1, final_code={}),

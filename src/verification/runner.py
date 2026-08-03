@@ -45,7 +45,7 @@ class VerificationRunner:
             steps: Custom steps (defaults to the standard pipeline).
             prior_coverage: Coverage from the prior iteration (for delta).
         """
-        self.steps = steps or default_steps()
+        self.steps = steps if steps is not None else default_steps()
         self.prior_coverage = prior_coverage
 
     def verify(

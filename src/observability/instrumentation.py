@@ -13,18 +13,19 @@ Prompt-content capture is opt-in (privacy off by default).
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import time
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from src.observability.metrics import (
+from observability.metrics import (
     record_agent_invocation,
     record_operation_duration,
     record_token_usage,
     record_tool_execution,
 )
-from src.observability.tracing import (
+from observability.tracing import (
     GEN_AI_AGENT_ROLE,
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,
@@ -78,44 +79,88 @@ def trace_agent_invocation(agent_role: str) -> Callable[[F], F]:
     return decorator
 
 
-def trace_chat(model: str) -> Callable[[F], F]:
-    """Decorator factory: wrap an LLM call with a chat span + token metrics."""
+def trace_chat(model_or_fn: Any = "default") -> Any:
+    """Decorator factory or decorator: wrap an LLM call with a chat span + token metrics.
+    Supports both @trace_chat and @trace_chat("model_name") on both sync and async functions.
+    """
+    model_name = "default"
+    target_fn = None
+
+    if callable(model_or_fn):
+        target_fn = model_or_fn
+    elif isinstance(model_or_fn, str):
+        model_name = model_or_fn
 
     def decorator(fn: F) -> F:
-        @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            tracer = get_tracer()
-            with tracer.start_as_current_span(SPAN_CHAT) as span:
-                span.set_attribute(GEN_AI_REQUEST_MODEL, model)
-                span.set_attribute(GEN_AI_SYSTEM, "litellm")
-                t0 = time.perf_counter()
-                try:
-                    result = fn(*args, **kwargs)
-                    # Extract usage from result (LLMResponse-like) if present
-                    usage = getattr(result, "usage", None)
-                    if usage:
-                        in_tok = getattr(usage, "prompt_tokens", 0) or 0
-                        out_tok = getattr(usage, "completion_tokens", 0) or 0
-                        span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, in_tok)
-                        span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, out_tok)
-                        record_token_usage(model, in_tok, out_tok)
-                    finish = getattr(result, "finish_reason", None)
-                    if finish:
-                        span.set_attribute(GEN_AI_RESPONSE_FINISH_REASON, finish)
-                    resp_model = getattr(result, "model", model)
-                    if resp_model:
-                        span.set_attribute(GEN_AI_RESPONSE_MODEL, resp_model)
-                    return result
-                except Exception as exc:
-                    span.record_exception(exc)
-                    span.set_attribute("error", True)
-                    record_operation_duration("chat", model, time.perf_counter() - t0)
-                    raise
-                finally:
-                    record_operation_duration("chat", model, time.perf_counter() - t0)
+        if asyncio.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                tracer = get_tracer()
+                with tracer.start_as_current_span(SPAN_CHAT) as span:
+                    span.set_attribute(GEN_AI_REQUEST_MODEL, model_name)
+                    span.set_attribute(GEN_AI_SYSTEM, "litellm")
+                    t0 = time.perf_counter()
+                    try:
+                        result = await fn(*args, **kwargs)
+                        usage = getattr(result, "usage", None)
+                        if usage:
+                            in_tok = getattr(usage, "prompt_tokens", 0) or 0
+                            out_tok = getattr(usage, "completion_tokens", 0) or 0
+                            span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, in_tok)
+                            span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, out_tok)
+                            record_token_usage(model_name, in_tok, out_tok)
+                        finish = getattr(result, "finish_reason", None)
+                        if finish:
+                            span.set_attribute(GEN_AI_RESPONSE_FINISH_REASON, finish)
+                        resp_model = getattr(result, "model", model_name)
+                        if resp_model:
+                            span.set_attribute(GEN_AI_RESPONSE_MODEL, resp_model)
+                        return result
+                    except Exception as exc:
+                        span.record_exception(exc)
+                        span.set_attribute("error", True)
+                        record_operation_duration("chat", model_name, time.perf_counter() - t0)
+                        raise
+                    finally:
+                        record_operation_duration("chat", model_name, time.perf_counter() - t0)
 
-        return wrapper  # type: ignore[return-value]
+            return async_wrapper  # type: ignore[return-value]
+        else:
+            @functools.wraps(fn)
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                tracer = get_tracer()
+                with tracer.start_as_current_span(SPAN_CHAT) as span:
+                    span.set_attribute(GEN_AI_REQUEST_MODEL, model_name)
+                    span.set_attribute(GEN_AI_SYSTEM, "litellm")
+                    t0 = time.perf_counter()
+                    try:
+                        result = fn(*args, **kwargs)
+                        usage = getattr(result, "usage", None)
+                        if usage:
+                            in_tok = getattr(usage, "prompt_tokens", 0) or 0
+                            out_tok = getattr(usage, "completion_tokens", 0) or 0
+                            span.set_attribute(GEN_AI_USAGE_INPUT_TOKENS, in_tok)
+                            span.set_attribute(GEN_AI_USAGE_OUTPUT_TOKENS, out_tok)
+                            record_token_usage(model_name, in_tok, out_tok)
+                        finish = getattr(result, "finish_reason", None)
+                        if finish:
+                            span.set_attribute(GEN_AI_RESPONSE_FINISH_REASON, finish)
+                        resp_model = getattr(result, "model", model_name)
+                        if resp_model:
+                            span.set_attribute(GEN_AI_RESPONSE_MODEL, resp_model)
+                        return result
+                    except Exception as exc:
+                        span.record_exception(exc)
+                        span.set_attribute("error", True)
+                        record_operation_duration("chat", model_name, time.perf_counter() - t0)
+                        raise
+                    finally:
+                        record_operation_duration("chat", model_name, time.perf_counter() - t0)
 
+            return sync_wrapper  # type: ignore[return-value]
+
+    if target_fn is not None:
+        return decorator(target_fn)
     return decorator
 
 

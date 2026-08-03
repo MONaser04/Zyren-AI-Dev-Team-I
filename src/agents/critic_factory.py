@@ -11,11 +11,11 @@ Each role gets a CriticAgent with a tailored system prompt and rubric.
 
 from __future__ import annotations
 
-from src.observability.instrumentation import trace_agent_invocation
+from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.critic import CriticAgent
+from agents.critic import CriticAgent
 
 if TYPE_CHECKING:
     from gateway.llm_client import LLMClient

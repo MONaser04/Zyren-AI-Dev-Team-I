@@ -33,8 +33,8 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 # Import minimal modules that don't trigger circular imports
-from src.contracts.eval_result import EvalResult
-from src.contracts.optim_report import OptimReport, RoundReport
+from contracts.eval_result import EvalResult
+from contracts.optim_report import OptimReport, RoundReport
 from optim.feedback_store import FeedbackStore
 
 # ── Logging ────────────────────────────────────────────────────────────────────

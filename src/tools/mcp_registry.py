@@ -249,6 +249,50 @@ NOTIFY_SEND_TOOL = MCPTool(
     category="notifications",
 )
 
+# --- Web (Deep Research) ---
+
+WEB_SEARCH_TOOL = MCPTool(
+    name="web_search",
+    description="Execute an open web search query and return ranked results.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Search query string.",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum number of results to return (default: 10).",
+            },
+        },
+        "required": ["query"],
+    },
+    required_permissions=["web.search"],
+    category="web",
+)
+
+WEB_SCRAPE_TOOL = MCPTool(
+    name="web_scrape",
+    description="Fetch and extract text content from a URL (read-only scrape).",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "URL to scrape.",
+            },
+            "max_length": {
+                "type": "integer",
+                "description": "Maximum character count to return (default: 8000).",
+            },
+        },
+        "required": ["url"],
+    },
+    required_permissions=["web.scrape"],
+    category="web",
+)
+
 # ============================================================
 # ALL_TOOLS — Master Registry
 # ============================================================
@@ -270,6 +314,8 @@ ALL_TOOLS: dict[str, MCPTool] = {
         STATE_READ_TOOL,
         STATE_WRITE_TOOL,
         NOTIFY_SEND_TOOL,
+        WEB_SEARCH_TOOL,
+        WEB_SCRAPE_TOOL,
     ]
 }
 
@@ -456,7 +502,8 @@ class MCPRegistry:
             "security": ["filesystem", "execution"],
             "architecture": ["filesystem", "state"],
             "notification": ["notifications"],
-            "general": ["filesystem", "git", "execution", "state", "notifications"],
+            "research": ["web", "state"],
+            "general": ["filesystem", "git", "execution", "state", "notifications", "web"],
         }
 
         cats = _TASK_CATEGORIES.get(task_type, _TASK_CATEGORIES["general"])

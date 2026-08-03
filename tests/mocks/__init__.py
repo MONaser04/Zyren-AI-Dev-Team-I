@@ -1,0 +1,1 @@
+"""Mock infrastructure for zero-real-API testing."""

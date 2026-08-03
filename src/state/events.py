@@ -56,6 +56,7 @@ class EventType(StrEnum):
     DB_SCHEMA_CREATED = "db_schema_created"
     SECURITY_REPORT_CREATED = "security_report_created"
     RESEARCH_NOTES_CREATED = "research_notes_created"
+    DEEP_RESEARCH_COMPLETED = "deep_research_completed"
     INTEGRATION_COMPLETED = "integration_completed"
     DOCUMENTATION_CREATED = "documentation_created"
 
@@ -432,6 +433,26 @@ def research_notes_event(
         event_type=EventType.RESEARCH_NOTES_CREATED,
         version=version,
         payload={"notes": notes_data},
+        causation_id=causation_id,
+        correlation_id=correlation_id,
+    )
+
+
+def deep_research_completed_event(
+    *,
+    workflow_id: str,
+    version: int,
+    report_data: dict,
+    causation_id: str | None = None,
+    correlation_id: str | None = None,
+) -> Event:
+    """Create a DEEP_RESEARCH_COMPLETED event."""
+    return _make_event(
+        workflow_id=workflow_id,
+        agent_id="deep_researcher",
+        event_type=EventType.DEEP_RESEARCH_COMPLETED,
+        version=version,
+        payload={"report": report_data},
         causation_id=causation_id,
         correlation_id=correlation_id,
     )

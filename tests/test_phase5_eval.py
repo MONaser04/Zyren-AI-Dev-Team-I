@@ -48,7 +48,7 @@ class TestGoldenSet:
     @patch("evals.golden.runner.run_workflow")
     def test_golden_runner_executes(self, mock_run_workflow):
         """Test runner executes tasks."""
-        from src.orchestrator.runner import WorkflowResult
+        from orchestrator.runner import WorkflowResult
 
         mock_run_workflow.return_value = WorkflowResult(
             workflow_id="w1", success=True, iterations=1, final_code={"main.py": "print(1)"}
@@ -79,7 +79,7 @@ class TestScorer:
 
     def test_score_result_basic(self):
         """Test scoring a basic EvalResult."""
-        from src.contracts.eval_result import EvalResult, EvalIssue
+        from contracts.eval_result import EvalResult, EvalIssue
 
         result = EvalResult(
             workflow_id="w1",
@@ -109,7 +109,7 @@ class TestScorer:
 
     def test_score_batch(self):
         """Test scoring a batch of results."""
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         results = [
             EvalResult(workflow_id="w1", task_id="t1", passed=True, overall_score=0.8),
@@ -123,7 +123,7 @@ class TestScorer:
 
     def test_security_penalty(self):
         """Test that security issues reduce score."""
-        from src.contracts.eval_result import EvalResult, EvalIssue
+        from contracts.eval_result import EvalResult, EvalIssue
 
         result_clean = EvalResult(
             workflow_id="w1", task_id="t1", passed=True, overall_score=0.9, security_issues_count=0

@@ -28,7 +28,7 @@ from evals.router_eval import evaluate_router, RouterEvaluationResult
 from evals.redteam.attacks import run_redteam_eval
 from evals.redteam.pyrit_runner import run_pyrit_evaluation
 from evals.redteam.garak_runner import run_garak_scan
-from src.contracts.eval_result import EvalResult
+from contracts.eval_result import EvalResult
 
 
 # ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.contracts.optim_report import OptimReport, RoundReport
+from contracts.optim_report import OptimReport, RoundReport
 
 logger = logging.getLogger(__name__)
 

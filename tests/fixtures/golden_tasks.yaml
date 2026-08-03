@@ -1,0 +1,377 @@
+# Golden Tasks for Evaluation
+# Each task defines a prompt, expected output, and validation criteria
+
+golden_tasks:
+  # Algorithmic tasks (10)
+  - id: "g001"
+    prompt: |
+      Write a Python function `fibonacci(n: int) -> int` that returns
+      the n-th Fibonacci number using an iterative approach (no recursion).
+      Include type hints and a docstring. Return 0 for n=0, 1 for n=1.
+    category: "algorithmic"
+    expected_files: ["fibonacci.py", "test_fibonacci.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_fibonacci.py -v"
+      - type: "type_check"
+        command: "mypy fibonacci.py"
+      - type: "lint"
+        command: "ruff check fibonacci.py"
+
+  - id: "g002"
+    prompt: |
+      Write a Python function `is_palindrome(s: str) -> bool` that checks
+      if a string is a palindrome, ignoring case, spaces, and punctuation.
+      Include type hints, docstring, and at least 3 assert-based tests.
+    category: "algorithmic"
+    expected_files: ["palindrome.py", "test_palindrome.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_palindrome.py -v"
+      - type: "type_check"
+        command: "mypy palindrome.py"
+      - type: "lint"
+        command: "ruff check palindrome.py"
+
+  - id: "g003"
+    prompt: |
+      Write a function `merge_sorted_lists(lists: list[list[int]]) -> list[int]`
+      that merges K sorted lists into one sorted list using a min-heap (heapq).
+      Include type hints, docstring, and complexity analysis in the docstring.
+    category: "algorithmic"
+    expected_files: ["merge_sorted.py", "test_merge_sorted.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_merge_sorted.py -v"
+      - type: "type_check"
+        command: "mypy merge_sorted.py"
+      - type: "lint"
+        command: "ruff check merge_sorted.py"
+
+  - id: "g004"
+    prompt: |
+      Implement a `CircularBuffer[T]` generic class with fixed capacity.
+      Methods: `enqueue(item: T)`, `dequeue() -> T`, `is_full() -> bool`,
+      `is_empty() -> bool`, `peek() -> T`, `size() -> int`.
+      Overwrite oldest items when full. Include type hints and tests.
+    category: "data_structures"
+    expected_files: ["circular_buffer.py", "test_circular_buffer.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_circular_buffer.py -v"
+      - type: "type_check"
+        command: "mypy circular_buffer.py"
+      - type: "lint"
+        command: "ruff check circular_buffer.py"
+
+  - id: "g005"
+    prompt: |
+      Write a function `binary_search(arr: list[int], target: int) -> int`
+      that performs binary search on a sorted array.
+      Return index if found, -1 otherwise. Include type hints, docstring,
+      and handle edge cases (empty array, duplicates).
+    category: "algorithmic"
+    expected_files: ["binary_search.py", "test_binary_search.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_binary_search.py -v"
+      - type: "type_check"
+        command: "mypy binary_search.py"
+      - type: "lint"
+        command: "ruff check binary_search.py"
+
+  - id: "g006"
+    prompt: |
+      Write a Python function `longest_substring_without_repeating(s: str) -> int`
+      that returns the length of the longest substring without repeating characters.
+      Use sliding window technique. Include type hints, docstring, and tests.
+    category: "algorithmic"
+    expected_files: ["longest_substring.py", "test_longest_substring.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_longest_substring.py -v"
+      - type: "type_check"
+        command: "mypy longest_substring.py"
+      - type: "lint"
+        command: "ruff check longest_substring.py"
+
+  - id: "g007"
+    prompt: |
+      Implement a `LRUCache` class with methods:
+      `__init__(capacity: int)`, `get(key: int) -> int`, `put(key: int, value: int) -> None`.
+      Use O(1) time for both operations. Include type hints and tests.
+    category: "data_structures"
+    expected_files: ["lru_cache.py", "test_lru_cache.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_lru_cache.py -v"
+      - type: "type_check"
+        command: "mypy lru_cache.py"
+      - type: "lint"
+        command: "ruff check lru_cache.py"
+
+  - id: "g008"
+    prompt: |
+      Write a function `two_sum(nums: list[int], target: int) -> list[int]`
+      that returns indices of two numbers that add up to target.
+      Assume exactly one solution exists, don't use same element twice.
+      O(n) time. Include type hints and tests.
+    category: "algorithmic"
+    expected_files: ["two_sum.py", "test_two_sum.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_two_sum.py -v"
+      - type: "type_check"
+        command: "mypy two_sum.py"
+      - type: "lint"
+        command: "ruff check two_sum.py"
+
+  - id: "g009"
+    prompt: |
+      Implement a `Trie` (prefix tree) class with methods:
+      `insert(word: str)`, `search(word: str) -> bool`, `starts_with(prefix: str) -> bool`.
+      Include type hints and comprehensive tests.
+    category: "data_structures"
+    expected_files: ["trie.py", "test_trie.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_trie.py -v"
+      - type: "type_check"
+        command: "mypy trie.py"
+      - type: "lint"
+        command: "ruff check trie.py"
+
+  - id: "g010"
+    prompt: |
+      Write a function `valid_parentheses(s: str) -> bool`
+      that checks if a string of parentheses is valid.
+      Supports (), [], {}. Use stack-based approach.
+      Include type hints, docstring, and tests.
+    category: "algorithmic"
+    expected_files: ["valid_parentheses.py", "test_valid_parentheses.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_valid_parentheses.py -v"
+      - type: "type_check"
+        command: "mypy valid_parentheses.py"
+      - type: "lint"
+        command: "ruff check valid_parentheses.py"
+
+  # API/Web tasks (10)
+  - id: "g011"
+    prompt: |
+      Create a FastAPI application with two endpoints:
+      - POST /users — creates a user with name and email, stores in memory
+      - GET /users/{user_id} — retrieves a user by ID
+      Use Pydantic models for request/response validation.
+      Include proper HTTP status codes and error responses.
+    category: "api"
+    expected_files: ["main.py", "models.py", "test_main.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_main.py -v"
+      - type: "type_check"
+        command: "mypy main.py models.py"
+      - type: "lint"
+        command: "ruff check main.py models.py"
+
+  - id: "g012"
+    prompt: |
+      Write an async Python function `fetch_json(url: str) -> dict` using
+      aiohttp that fetches JSON from a URL with proper error handling for:
+      connection errors, HTTP errors (4xx, 5xx), and invalid JSON responses.
+      Include type hints, docstring, and a retry mechanism (max 3 retries
+      with exponential backoff).
+    category: "api"
+    expected_files: ["fetch_json.py", "test_fetch_json.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_fetch_json.py -v"
+      - type: "type_check"
+        command: "mypy fetch_json.py"
+      - type: "lint"
+        command: "ruff check fetch_json.py"
+
+  - id: "g013"
+    prompt: |
+      Create a FastAPI endpoint `/predict` that accepts a JSON payload
+      with features and returns a mock prediction.
+      Use Pydantic for request/response validation.
+      Add input validation (required fields, value ranges).
+    category: "api"
+    expected_files: ["main.py", "models.py", "test_main.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_main.py -v"
+      - type: "type_check"
+        command: "mypy main.py models.py"
+      - type: "lint"
+        command: "ruff check main.py models.py"
+
+  - id: "g014"
+    prompt: |
+      Build a REST API with FastAPI for a simple todo list:
+      - GET /todos — list all todos
+      - POST /todos — create a new todo
+      - PUT /todos/{id} — update a todo
+      - DELETE /todos/{id} — delete a todo
+      Use in-memory storage. Include Pydantic models.
+    category: "api"
+    expected_files: ["main.py", "models.py", "test_main.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_main.py -v"
+      - type: "type_check"
+        command: "mypy main.py models.py"
+      - type: "lint"
+        command: "ruff check main.py models.py"
+
+  - id: "g015"
+    prompt: |
+      Create an async rate limiter class `RateLimiter` with methods:
+      `allow_request(client_id: str) -> bool` and `reset(client_id: str)`.
+      Uses sliding window algorithm with configurable max_requests per window_seconds.
+      Use `time.monotonic()` for timing. Include type hints and tests.
+    category: "utility"
+    expected_files: ["rate_limiter.py", "test_rate_limiter.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_rate_limiter.py -v"
+      - type: "type_check"
+        command: "mypy rate_limiter.py"
+      - type: "lint"
+        command: "ruff check rate_limiter.py"
+
+  - id: "g016"
+    prompt: |
+      Write a Python context manager `timed_block(name: str)` that logs
+      the execution time of a block of code using `time.perf_counter()`.
+      Print: "[name] took X.XXX seconds". Include type hints.
+    category: "utility"
+    expected_files: ["timed_block.py", "test_timed_block.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_timed_block.py -v"
+      - type: "type_check"
+        command: "mypy timed_block.py"
+      - type: "lint"
+        command: "ruff check timed_block.py"
+
+  - id: "g017"
+    prompt: |
+      Write a decorator `@retry_on_failure(max_retries=3, backoff_factor=2.0)`
+      that retries a function on exception with exponential backoff.
+      Include type hints, docstring, and example usage.
+    category: "utility"
+    expected_files: ["retry_decorator.py", "test_retry_decorator.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_retry_decorator.py -v"
+      - type: "type_check"
+        command: "mypy retry_decorator.py"
+      - type: "lint"
+        command: "ruff check retry_decorator.py"
+
+  - id: "g018"
+    prompt: |
+      Create a FastAPI app with JWT authentication:
+      - POST /login — accepts username/password, returns JWT token
+      - GET /protected — requires valid JWT token
+      Use python-jose for JWT. Include Pydantic models for requests.
+    category: "api"
+    expected_files: ["main.py", "auth.py", "models.py", "test_main.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_main.py -v"
+      - type: "type_check"
+        command: "mypy main.py auth.py models.py"
+      - type: "lint"
+        command: "ruff check main.py auth.py models.py"
+
+  - id: "g019"
+    prompt: |
+      Write an async function `fetch_with_semaphore(urls: list[str], max_concurrent: int) -> list[dict]`
+      that fetches multiple URLs concurrently with a semaphore limiting concurrent requests.
+      Return list of dicts with url, status, content_length. Handle errors gracefully.
+    category: "async"
+    expected_files: ["fetch_semaphore.py", "test_fetch_semaphore.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_fetch_semaphore.py -v"
+      - type: "type_check"
+        command: "mypy fetch_semaphore.py"
+      - type: "lint"
+        command: "ruff check fetch_semaphore.py"
+
+  - id: "g020"
+    prompt: |
+      Create a webhook endpoint `/webhook` that receives GitHub push events.
+      Parse the payload, extract repository name, branch, and commit SHA.
+      Return 200 OK with parsed info. Validate signature using HMAC-SHA256.
+    category: "api"
+    expected_files: ["main.py", "webhook.py", "test_webhook.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_webhook.py -v"
+      - type: "type_check"
+        command: "mypy main.py webhook.py"
+      - type: "lint"
+        command: "ruff check main.py webhook.py"
+
+  # Data Structures (10)
+  - id: "g021"
+    prompt: |
+      Implement a `MinStack` class with O(1) time for:
+      `push(val: int)`, `pop() -> int`, `top() -> int`, `get_min() -> int`.
+      Use auxiliary stack. Include type hints and tests.
+    category: "data_structures"
+    expected_files: ["min_stack.py", "test_min_stack.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_min_stack.py -v"
+      - type: "type_check"
+        command: "mypy min_stack.py"
+      - type: "lint"
+        command: "ruff check min_stack.py"
+
+  - id: "g022"
+    prompt: |
+      Implement a `MaxHeap` class using a list with methods:
+      `push(val: int)`, `pop() -> int`, `peek() -> int`, `size() -> int`.
+      Include type hints, docstring, and tests.
+    category: "data_structures"
+    expected_files: ["max_heap.py", "test_max_heap.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_max_heap.py -v"
+      - type: "type_check"
+        command: "mypy max_heap.py"
+      - type: "lint"
+        command: "ruff check max_heap.py"
+
+  - id: "g023"
+    prompt: |
+      Implement a `Graph` class with adjacency list representation.
+      Methods: `add_vertex(v: str)`, `add_edge(u: str, v: str, weight: int = 1)`,
+      `get_neighbors(v: str) -> list[tuple[str, int]]`, `bfs(start: str) -> list[str]`,
+      `dfs(start: str) -> list[str]`. Include type hints and tests.
+    category: "data_structures"
+    expected_files: ["graph.py", "test_graph.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_graph.py -v"
+      - type: "type_check"
+        command: "mypy graph.py"
+      - type: "lint"
+        command: "ruff check graph.py"
+
+  - id: "g024"
+    prompt: |
+      Write a function `dijkstra(graph: dict[str, dict[str, int]], start: str) -> dict[str, int]`
+      that computes shortest paths from start to all vertices using Dijkstra's algorithm.
+      Graph is adjacency dict: {node: {neighbor: weight}}. Include type hints and tests.
+    category: "algorithmic"
+    expected_files: ["dijkstra.py", "test_dijkstra.py"]
+    validation:
+      - type: "unit_test"
+        command: "python -m pytest test_dijkstra.py -v"

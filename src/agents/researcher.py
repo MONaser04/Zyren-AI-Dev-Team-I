@@ -11,8 +11,8 @@ from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.base import BaseAgent
-from src.contracts.schemas import ResearchNotes
+from agents.base import BaseAgent
+from contracts.schemas import ResearchNotes
 
 if TYPE_CHECKING:
     from gateway.llm_client import LLMClient
@@ -46,12 +46,13 @@ class ResearcherAgent(BaseAgent):
 
     def _build_prompt(self, topic: str, context: str) -> str:
         return (
-            f"Research Topic: {topic}\n"
-            f"Context: {context}\n\n"
+            f"The user has asked the following Research Question: '{topic}'\n"
+            f"Context Data:\n{context}\n\n"
+            "You are an expert Research Agent. Analyze the provided context and provide a DIRECT and SPECIFIC answer to the user's question.\n"
             "Produce ResearchNotes as JSON with:\n"
-            "- findings: list of key findings\n"
-            "- sources: list of source references\n"
-            "- recommendations: actionable recommendations"
+            "- findings: List of key analytical findings that directly address the user's question.\n"
+            "- sources: List of source references (e.g., 'System Model Registry Status').\n"
+            "- recommendations: Your final conclusion, actionable recommendations, or the explicit definitive answer to the user's query."
         )
 
     def __repr__(self) -> str:

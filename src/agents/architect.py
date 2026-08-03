@@ -11,7 +11,7 @@ from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.base import BaseAgent
+from agents.base import BaseAgent
 from contracts.schemas import ArchitectDesign, ProductRequirementDoc, TaskDAG
 
 if TYPE_CHECKING:

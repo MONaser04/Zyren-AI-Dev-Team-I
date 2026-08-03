@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from optim.convergence import ConvergenceConfig, ConvergenceDetector, ConvergenceResult
-from src.contracts.eval_result import EvalResult
+from contracts.eval_result import EvalResult
 
 
 class OrchestratorConvergence:

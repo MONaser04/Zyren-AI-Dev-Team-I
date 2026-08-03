@@ -8,16 +8,16 @@ with user stories, acceptance criteria, constraints, and non-functional requirem
 
 from __future__ import annotations
 
-from src.observability.instrumentation import trace_agent_invocation
+from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.base import BaseAgent
-from src.contracts.schemas import ProductRequirementDoc
+from agents.base import BaseAgent
+from contracts.schemas import ProductRequirementDoc
 
 if TYPE_CHECKING:
-    from src.gateway.llm_client import LLMClient
-    from src.state.store import EventStore
+    from gateway.llm_client import LLMClient
+    from state.store import EventStore
 
 
 class ProductAnalystAgent(BaseAgent):

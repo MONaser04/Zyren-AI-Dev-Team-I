@@ -449,7 +449,7 @@ class FeedbackStore:
 
     def record_eval(self, eval_result: "EvalResult") -> None:
         """Record an EvalResult as feedback items."""
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
         for issue in eval_result.issues:
             self.insert(
                 FeedbackRecord(

@@ -12,7 +12,7 @@ from collections import Counter
 from typing import Any
 
 from optim.feedback_store import FeedbackStore
-from src.contracts.eval_result import EvalResult
+from contracts.eval_result import EvalResult
 
 logger = logging.getLogger(__name__)
 

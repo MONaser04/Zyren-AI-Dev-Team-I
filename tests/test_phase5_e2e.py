@@ -11,12 +11,12 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from src.agents.supervisor import SupervisorAgent, SupervisorConfig, run_supervisor
-from src.orchestrator.runner import run_workflow, run_evaluation_batch, WorkflowResult
-from src.contracts.eval_result import EvalResult
+from agents.supervisor import SupervisorAgent, SupervisorConfig, run_supervisor
+from orchestrator.runner import run_workflow, run_evaluation_batch, WorkflowResult
+from contracts.eval_result import EvalResult
 from optim.feedback_store import FeedbackStore, get_feedback_store
-from src.state.store import SQLiteEventStore
-from src.gateway.llm_client import LLMClient
+from state.store import SQLiteEventStore
+from gateway.llm_client import LLMClient
 
 
 class TestSupervisorIntegration:
@@ -52,7 +52,7 @@ class TestSupervisorIntegration:
             security_issues_count=0, issues=[],
         )
 
-        from src.contracts.optim_report import TuningResult
+        from contracts.optim_report import TuningResult
         mock_tune_prompts.return_value = [
             TuningResult(agent="coder", original_prompt="orig", variants=["v1"],
                         best_variant="v1", best_score=0.85, evaluations=[]),
@@ -123,7 +123,7 @@ class TestSupervisorIntegration:
 
         mock_run_eval.side_effect = mock_eval
 
-        from src.contracts.optim_report import TuningResult
+        from contracts.optim_report import TuningResult
         mock_tune_prompts.return_value = [
             TuningResult(agent="coder", original_prompt="orig", variants=["v1"],
                         best_variant="v1", best_score=0.7, evaluations=[]),
@@ -349,7 +349,7 @@ class TestConvergenceIntegration:
     def test_convergence_stops_early(self):
         """Test that convergence detection can stop optimisation early."""
         from optim.convergence import ConvergenceDetector, ConvergenceConfig
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         # Simulate scores that plateau quickly - 10 rounds
         results = [
@@ -380,7 +380,7 @@ class TestConvergenceIntegration:
     def test_no_convergence_when_improving(self):
         """Test no convergence when scores keep improving."""
         from optim.convergence import check_convergence, ConvergenceConfig
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         # Scores improving steadily
         results = [
@@ -410,7 +410,7 @@ class TestArtifactIntegration:
     @patch("src.orchestrator.runner.build_feedback_loop")
     def test_artifacts_saved_during_workflow(self, mock_build_graph, mock_llm, mock_store, tmp_path):
         """Test artifacts are created and saved during workflow."""
-        from src.orchestrator.artifacts import create_artifact_manager
+        from orchestrator.artifacts import create_artifact_manager
 
         # Setup mocks
         mock_graph = Mock()

@@ -1,0 +1,44 @@
+{
+  "nvidia_nim/deepseek-ai/deepseek-v4-pro": {
+    "input_per_1m_tokens": 0.0,
+    "output_per_1m_tokens": 0.0,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "nvidia_nim/minimaxai/minimax-m3": {
+    "input_per_1m_tokens": 0.0,
+    "output_per_1m_tokens": 0.0,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "nvidia_nim/google/gemma-4-31b-it": {
+    "input_per_1m_tokens": 0.0,
+    "output_per_1m_tokens": 0.0,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "nvidia_nim/nvidia/nemotron-3-ultra": {
+    "input_per_1m_tokens": 0.0,
+    "output_per_1m_tokens": 0.0,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "gpt-4o": {
+    "input_per_1m_tokens": 2.50,
+    "output_per_1m_tokens": 10.00,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "gpt-4o-mini": {
+    "input_per_1m_tokens": 0.15,
+    "output_per_1m_tokens": 0.60,
+    "currency": "USD",
+    "effective_date": "2024-01-01"
+  },
+  "claude-3-5-sonnet-20241022": {
+    "input_per_1m_tokens": 3.00,
+    "output_per_1m_tokens": 15.00,
+    "currency": "USD",
+    "effective_date": "2024-10-22"
+  }
+}

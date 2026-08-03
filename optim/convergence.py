@@ -11,7 +11,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from src.contracts.eval_result import EvalResult
+from contracts.eval_result import EvalResult
 
 logger = logging.getLogger(__name__)
 

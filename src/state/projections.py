@@ -148,6 +148,9 @@ def _apply_event(state: WorkflowState, event: Event) -> WorkflowState:
         case EventType.RESEARCH_NOTES_CREATED:
             return state.model_copy(update={'research_notes': event.payload.get('notes')})
 
+        case EventType.DEEP_RESEARCH_COMPLETED:
+            return state.model_copy(update={'deep_research_report': event.payload.get('report')})
+
         case EventType.INTEGRATION_COMPLETED:
             return state.model_copy(update={'integrator_output': event.payload.get('integration')})
 

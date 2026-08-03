@@ -18,7 +18,7 @@ from typing import Any
 
 import yaml
 
-from src.gateway.llm_client import LLMClient
+from gateway.llm_client import LLMClient
 
 
 @dataclass

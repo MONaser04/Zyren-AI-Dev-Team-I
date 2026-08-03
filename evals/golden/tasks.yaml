@@ -1,88 +1,934 @@
-# =============================================================================
-# Golden Evaluation Tasks — Phase 5
-# =============================================================================
-# مجموعة مهام ذهبية تُستخدم لتقييم أداء الـ AI Dev Team pipeline.
-# كل task له id و prompt يمثل طلب تطوير برمجي.
-# =============================================================================
-
 tasks:
-  # ── Algorithmic Tasks ──────────────────────────────────────────────────────
-  - id: "g0"
-    prompt: >
-      Write a Python function `fibonacci(n: int) -> int` that returns
-      the n-th Fibonacci number using an iterative approach (no recursion).
-      Include type hints and a docstring. Return 0 for n=0, 1 for n=1.
+- id: g0
+  prompt: 'Write a Python function `fibonacci(n: int) -> int` that returns
 
-  - id: "g1"
-    prompt: >
-      Write a Python function `is_palindrome(s: str) -> bool` that checks
-      if a string is a palindrome, ignoring case, spaces, and punctuation.
-      Include type hints, docstring, and at least 3 assert-based tests.
+    the n-th Fibonacci number using an iterative approach (no recursion).
 
-  - id: "g2"
-    prompt: >
-      Implement a generic `Stack[T]` class in Python with methods:
-      `push(item: T)`, `pop() -> T`, `peek() -> T`, `is_empty() -> bool`.
-      Include proper error handling (raise exception on pop/peek empty).
-      Include type hints and docstrings.
+    Include type hints and a docstring. Return 0 for n=0, 1 for n=1.
 
-  # ── API / Web Tasks ────────────────────────────────────────────────────────
-  - id: "g3"
-    prompt: >
-      Create a FastAPI application with two endpoints:
-      - POST /users — creates a user with name and email, stores in memory
-      - GET /users/{user_id} — retrieves a user by ID
-      Use Pydantic models for request/response validation.
-      Include proper HTTP status codes and error responses.
+    '
+  category: algorithmic
+  expected_files:
+  - fibonacci.py
+  - test_fibonacci.py
+- id: g1
+  prompt: 'Write a Python function `is_palindrome(s: str) -> bool` that checks
 
-  - id: "g4"
-    prompt: >
-      Write an async Python function `fetch_json(url: str) -> dict` using
-      aiohttp that fetches JSON from a URL with proper error handling for:
-      connection errors, HTTP errors (4xx, 5xx), and invalid JSON responses.
-      Include type hints, docstring, and a retry mechanism (max 3 retries
-      with exponential backoff).
+    if a string is a palindrome, ignoring case, spaces, and punctuation.
 
-  # ── Data Structure Tasks ───────────────────────────────────────────────────
-  - id: "g5"
-    prompt: >
-      Implement a `CircularBuffer[T]` class with fixed capacity. Methods:
-      `enqueue(item: T)`, `dequeue() -> T`, `is_full() -> bool`,
-      `is_empty() -> bool`, `peek() -> T`, `size() -> int`.
-      Overwrite oldest items when full. Include type hints and tests.
+    Include type hints, docstring, and at least 3 assert-based tests.
 
-  - id: "g6"
-    prompt: >
-      Write a function `merge_sorted_lists(lists: list[list[int]]) -> list[int]`
-      that merges K sorted lists into one sorted list using a min-heap
-      (heapq). Include type hints, docstring, and complexity analysis
-      in the docstring.
+    '
+  category: algorithmic
+  expected_files:
+  - palindrome.py
+  - test_palindrome.py
+- id: g2
+  prompt: 'Implement a generic `Stack[T]` class in Python with methods:
 
-  # ── Utility Tasks ──────────────────────────────────────────────────────────
-  - id: "g7"
-    prompt: >
-      Write a decorator `@retry_on_failure(max_retries=3, backoff_factor=2.0)`
-      that retries a function on exception with exponential backoff.
-      Include type hints, docstring, and an example usage.
+    `push(item: T)`, `pop() -> T`, `peek() -> T`, `is_empty() -> bool`.
 
-  - id: "g8"
-    prompt: >
-      Write a Python context manager `timed_block(name: str)` that logs
-      the execution time of a block of code using `time.perf_counter()`.
-      Print: "[name] took X.XXX seconds". Include type hints.
+    Include proper error handling (raise exception on pop/peek empty).
 
-  # ── Security / Validation Tasks ────────────────────────────────────────────
-  - id: "g9"
-    prompt: >
-      Write a function `sanitize_sql_input(value: str) -> str` that
-      escapes single quotes and removes semicolons from a string to
-      prevent basic SQL injection. Include type hints, docstring,
-      and assert-based validation tests with malicious inputs.
+    Include type hints and docstrings.
 
-  - id: "g10"
-    prompt: >
-      Implement a `RateLimiter` class with methods:
-      `allow_request(client_id: str) -> bool` and `reset(client_id: str)`.
-      Uses a sliding window algorithm with configurable max_requests per
-      window_seconds. Use `time.monotonic()` for timing.
-      Include type hints and docstrings.
+    '
+  category: algorithmic
+  expected_files:
+  - stack.py
+  - test_stack.py
+- id: g3
+  prompt: 'Write a function `binary_search(arr: list[int], target: int) -> int`
+
+    that performs binary search on a sorted list. Returns index if found,
+
+    -1 otherwise. Include type hints, docstring, and tests for edge cases.
+
+    '
+  category: algorithmic
+  expected_files:
+  - binary_search.py
+  - test_binary_search.py
+- id: g4
+  prompt: 'Implement a function `merge_sort(arr: list[int]) -> list[int]` that
+
+    sorts a list using the merge sort algorithm (not built-in sort).
+
+    Include type hints, docstring, and tests with random lists.
+
+    '
+  category: algorithmic
+  expected_files:
+  - merge_sort.py
+  - test_merge_sort.py
+- id: g5
+  prompt: 'Write a function `longest_common_subsequence(s1: str, s2: str) -> str`
+
+    that returns the LCS of two strings using dynamic programming.
+
+    Include type hints, docstring, and complexity analysis in docstring.
+
+    '
+  category: algorithmic
+  expected_files:
+  - lcs.py
+  - test_lcs.py
+- id: g6
+  prompt: 'Implement a function `topological_sort(edges: list[tuple[str, str]]) ->
+    list[str]`
+
+    that performs topological sort on a DAG given edge list.
+
+    Raise ValueError if cycle detected. Include type hints and tests.
+
+    '
+  category: algorithmic
+  expected_files:
+  - topo_sort.py
+  - test_topo_sort.py
+- id: g7
+  prompt: 'Write a function `coin_change(coins: list[int], amount: int) -> int`
+
+    that returns minimum coins needed for amount, or -1 if impossible.
+
+    Use dynamic programming. Include type hints, docstring, and tests.
+
+    '
+  category: algorithmic
+  expected_files:
+  - coin_change.py
+  - test_coin_change.py
+- id: g8
+  prompt: 'Implement `trapping_rain_water(height: list[int]) -> int` that
+
+    computes how much water can be trapped after raining.
+
+    Use two-pointer O(n) approach. Include type hints and tests.
+
+    '
+  category: algorithmic
+  expected_files:
+  - rain_water.py
+  - test_rain_water.py
+- id: g9
+  prompt: 'Write a function `word_break(s: str, word_dict: set[str]) -> bool`
+
+    that determines if s can be segmented into space-separated
+
+    dictionary words. Use DP. Include type hints and tests.
+
+    '
+  category: algorithmic
+  expected_files:
+  - word_break.py
+  - test_word_break.py
+- id: g10
+  prompt: 'Create a FastAPI application with two endpoints:
+
+    - POST /users — creates a user with name and email, stores in memory
+
+    - GET /users/{user_id} — retrieves a user by ID
+
+    Use Pydantic models for request/response validation.
+
+    Include proper HTTP status codes and error responses.
+
+    '
+  category: api
+  expected_files:
+  - main.py
+  - models.py
+  - test_main.py
+- id: g11
+  prompt: 'Write an async Python function `fetch_json(url: str) -> dict` using
+
+    aiohttp that fetches JSON from a URL with proper error handling for:
+
+    connection errors, HTTP errors (4xx, 5xx), and invalid JSON responses.
+
+    Include type hints, docstring, and a retry mechanism (max 3 retries
+
+    with exponential backoff).
+
+    '
+  category: api
+  expected_files:
+  - fetch_json.py
+  - test_fetch_json.py
+- id: g12
+  prompt: 'Create a FastAPI endpoint POST /webhook that receives GitHub webhook
+
+    events. Verify the X-Hub-Signature-256 header using a secret.
+
+    Parse push events and return repository name and branch.
+
+    Include proper error responses for invalid signatures.
+
+    '
+  category: api
+  expected_files:
+  - webhook.py
+  - test_webhook.py
+- id: g13
+  prompt: 'Build a REST API for a TODO list with endpoints:
+
+    - GET /todos — list all todos
+
+    - POST /todos — create todo (title, description)
+
+    - GET /todos/{id} — get single todo
+
+    - PUT /todos/{id} — update todo
+
+    - DELETE /todos/{id} — delete todo
+
+    Use SQLite with SQLAlchemy. Include Pydantic models and tests.
+
+    '
+  category: api
+  expected_files:
+  - main.py
+  - models.py
+  - database.py
+  - test_main.py
+- id: g14
+  prompt: 'Write an async function `batch_fetch(urls: list[str]) -> list[dict]`
+
+    that fetches multiple URLs concurrently using aiohttp with a semaphore
+
+    limiting to 5 concurrent requests. Return list of {url, data, error}.
+
+    Handle timeouts and errors gracefully. Include type hints and tests.
+
+    '
+  category: api
+  expected_files:
+  - batch_fetch.py
+  - test_batch_fetch.py
+- id: g15
+  prompt: 'Create a GraphQL API using Strawberry for a simple blog:
+
+    - Query: posts, post(id), authors
+
+    - Mutation: createPost, updatePost, deletePost
+
+    Use SQLAlchemy models. Include schema, resolvers, and tests.
+
+    '
+  category: api
+  expected_files:
+  - schema.py
+  - models.py
+  - test_schema.py
+- id: g16
+  prompt: 'Build a rate-limited FastAPI endpoint using token bucket algorithm.
+
+    Endpoint: POST /api/data with rate limit: 10 requests/minute per IP.
+
+    Return 429 with Retry-After header when exceeded.
+
+    Store state in Redis. Include tests with multiple clients.
+
+    '
+  category: api
+  expected_files:
+  - rate_limit.py
+  - main.py
+  - test_rate_limit.py
+- id: g17
+  prompt: 'Create a FastAPI middleware that logs request/response details:
+
+    method, path, status_code, duration_ms, client_ip.
+
+    Exclude /health and /metrics paths. Log as structured JSON.
+
+    Include configuration options and tests.
+
+    '
+  category: api
+  expected_files:
+  - logging_middleware.py
+  - main.py
+  - test_middleware.py
+- id: g18
+  prompt: 'Build a WebSocket server with FastAPI for real-time chat:
+
+    - /ws/chat/{room_id} — join room, broadcast messages
+
+    - Handle connect/disconnect, message history (last 50)
+
+    - Include connection manager and tests with testclient
+
+    '
+  category: api
+  expected_files:
+  - chat.py
+  - manager.py
+  - test_chat.py
+- id: g19
+  prompt: 'Create a FastAPI dependency injection system for database sessions:
+
+    - get_db() yields Session, auto-commits on success, rolls back on error
+
+    - get_current_user() extracts user from JWT token
+
+    - Role-based access: admin, user, guest
+
+    Include tests for all dependencies.
+
+    '
+  category: api
+  expected_files:
+  - deps.py
+  - auth.py
+  - test_deps.py
+- id: g20
+  prompt: 'Implement a `CircularBuffer[T]` class with fixed capacity. Methods:
+
+    `enqueue(item: T)`, `dequeue() -> T`, `is_full() -> bool`,
+
+    `is_empty() -> bool`, `peek() -> T`, `size() -> int`.
+
+    Overwrite oldest items when full. Include type hints and tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - circular_buffer.py
+  - test_circular_buffer.py
+- id: g21
+  prompt: 'Write a function `merge_sorted_lists(lists: list[list[int]]) -> list[int]`
+
+    that merges K sorted lists into one sorted list using a min-heap
+
+    (heapq). Include type hints, docstring, and complexity analysis
+
+    in the docstring.
+
+    '
+  category: data_structures
+  expected_files:
+  - merge_sorted.py
+  - test_merge_sorted.py
+- id: g22
+  prompt: 'Implement a `Trie` (prefix tree) class with methods:
+
+    `insert(word: str)`, `search(word: str) -> bool`,
+
+    `starts_with(prefix: str) -> bool`, `delete(word: str) -> bool`.
+
+    Include type hints, docstrings, and comprehensive tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - trie.py
+  - test_trie.py
+- id: g23
+  prompt: 'Implement an `LRUCache` class with capacity limit using OrderedDict
+
+    or doubly linked list + hashmap. Methods: `get(key) -> int`,
+
+    `put(key: int, value: int)`. O(1) operations. Include tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - lru_cache.py
+  - test_lru_cache.py
+- id: g24
+  prompt: 'Implement a `BinarySearchTree` class with methods:
+
+    `insert(val: int)`, `delete(val: int)`, `search(val: int) -> bool`,
+
+    `inorder() -> list[int]`, `preorder() -> list[int]`, `postorder() -> list[int]`,
+
+    `height() -> int`, `is_balanced() -> bool`.
+
+    Include type hints and tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - bst.py
+  - test_bst.py
+- id: g25
+  prompt: 'Implement a `Graph` class (adjacency list) with methods:
+
+    `add_vertex(v)`, `add_edge(u, v, weight=1)`,
+
+    `dijkstra(start) -> dict`, `bfs(start) -> list`, `dfs(start) -> list`,
+
+    `has_cycle() -> bool`, `topological_sort() -> list`.
+
+    Support directed/undirected. Include tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - graph.py
+  - test_graph.py
+- id: g26
+  prompt: 'Implement a `MinHeap` class from scratch (not heapq) with methods:
+
+    `push(item)`, `pop() -> item`, `peek() -> item`, `size() -> int`,
+
+    `heapify(arr)`. Include `heap_sort(arr)` function using the heap.
+
+    Include type hints and tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - min_heap.py
+  - test_min_heap.py
+- id: g27
+  prompt: 'Implement a `DisjointSet` (Union-Find) class with path compression
+
+    and union by rank. Methods: `make_set(x)`, `find(x) -> root`,
+
+    `union(x, y) -> bool`, `connected(x, y) -> bool`.
+
+    Use to detect cycles in undirected graph. Include tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - disjoint_set.py
+  - test_disjoint_set.py
+- id: g28
+  prompt: 'Implement a `BloomFilter` class with methods:
+
+    `add(item: str)`, `contains(item: str) -> bool`,
+
+    `false_positive_rate() -> float`.
+
+    Use multiple hash functions. Include serialization to bytes.
+
+    Include type hints and tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - bloom_filter.py
+  - test_bloom_filter.py
+- id: g29
+  prompt: 'Implement a `SkipList` class with probabilistic balancing.
+
+    Methods: `insert(key, value)`, `search(key) -> value`,
+
+    `delete(key) -> bool`, `range_query(start, end) -> list`.
+
+    O(log n) expected. Include type hints and tests.
+
+    '
+  category: data_structures
+  expected_files:
+  - skip_list.py
+  - test_skip_list.py
+- id: g30
+  prompt: 'Write a decorator `@retry_on_failure(max_retries=3, backoff_factor=2.0)`
+
+    that retries a function on exception with exponential backoff.
+
+    Include type hints, docstring, and an example usage.
+
+    '
+  category: utility
+  expected_files:
+  - retry_decorator.py
+  - test_retry_decorator.py
+- id: g31
+  prompt: 'Write a Python context manager `timed_block(name: str)` that logs
+
+    the execution time of a block of code using `time.perf_counter()`.
+
+    Print: "[name] took X.XXX seconds". Include type hints.
+
+    '
+  category: utility
+  expected_files:
+  - timed_block.py
+  - test_timed_block.py
+- id: g32
+  prompt: 'Write a function `flatten_dict(d: dict, parent_key: str = '''', sep: str
+    = ''.'') -> dict`
+
+    that flattens a nested dictionary. Keys joined by separator.
+
+    Example: {''a'': {''b'': 1}} -> {''a.b'': 1}. Include type hints and tests.
+
+    '
+  category: utility
+  expected_files:
+  - flatten_dict.py
+  - test_flatten_dict.py
+- id: g33
+  prompt: 'Implement a `Memoize` class decorator that caches function results
+
+    with TTL support. Methods: `__call__`, `clear()`, `get_stats()`.
+
+    Thread-safe. Include type hints, docstring, and tests.
+
+    '
+  category: utility
+  expected_files:
+  - memoize.py
+  - test_memoize.py
+- id: g34
+  prompt: 'Write a function `parse_cron(expression: str) -> dict` that parses
+
+    a cron expression (minute hour day month weekday) and returns
+
+    next 5 execution times as ISO strings. Handle */n, ranges, lists.
+
+    Include type hints and tests with various expressions.
+
+    '
+  category: utility
+  expected_files:
+  - parse_cron.py
+  - test_parse_cron.py
+- id: g35
+  prompt: 'Write a function `sanitize_sql_input(value: str) -> str` that
+
+    escapes single quotes and removes semicolons from a string to
+
+    prevent basic SQL injection. Include type hints, docstring,
+
+    and assert-based validation tests with malicious inputs.
+
+    '
+  category: security
+  expected_files:
+  - sanitize_sql.py
+  - test_sanitize_sql.py
+- id: g36
+  prompt: 'Implement a `RateLimiter` class with methods:
+
+    `allow_request(client_id: str) -> bool` and `reset(client_id: str)`.
+
+    Uses sliding window algorithm with configurable max_requests per
+
+    window_seconds. Use `time.monotonic()` for timing. Include tests.
+
+    '
+  category: security
+  expected_files:
+  - rate_limiter.py
+  - test_rate_limiter.py
+- id: g37
+  prompt: 'Write a function `validate_password(password: str) -> tuple[bool, list[str]]`
+
+    that validates password strength: min 12 chars, uppercase, lowercase,
+
+    digit, special char, no common patterns. Return (is_valid, errors).
+
+    Include comprehensive tests.
+
+    '
+  category: security
+  expected_files:
+  - validate_password.py
+  - test_validate_password.py
+- id: g38
+  prompt: 'Implement `sanitize_html(html: str, allowed_tags: set[str] = None) -> str`
+
+    that removes dangerous HTML tags/attributes (script, iframe, onerror, etc.)
+
+    Allow only safe tags (p, b, i, u, a, ul, ol, li). Use bleach or custom parser.
+
+    Include tests with XSS payloads.
+
+    '
+  category: security
+  expected_files:
+  - sanitize_html.py
+  - test_sanitize_html.py
+- id: g39
+  prompt: 'Write a function `generate_secure_token(length: int = 32) -> str`
+
+    that generates a cryptographically secure random token using
+
+    `secrets.token_urlsafe`. Include optional character set customization.
+
+    Include tests for entropy and uniqueness.
+
+    '
+  category: security
+  expected_files:
+  - secure_token.py
+  - test_secure_token.py
+- id: g40
+  prompt: 'Implement a `JWTValidator` class with methods:
+
+    `encode(payload: dict, secret: str, expires_minutes: int = 60) -> str`,
+
+    `decode(token: str, secret: str) -> dict`,
+
+    `verify(token: str, secret: str) -> bool`.
+
+    Handle expiration, algorithm validation. Include tests.
+
+    '
+  category: security
+  expected_files:
+  - jwt_validator.py
+  - test_jwt_validator.py
+- id: g40
+  prompt: 'Create a `ConfigManager` class that loads configuration from
+
+    environment variables, YAML files, and command-line arguments
+
+    with priority: CLI > ENV > YAML > defaults. Support type coercion
+
+    (str, int, float, bool, list). Include type hints and tests.
+
+    '
+  category: real_world
+  expected_files:
+  - config_manager.py
+  - test_config_manager.py
+- id: g41
+  prompt: 'Build a simple HTTP proxy server in Python that:
+
+    - Forwards requests to target host
+
+    - Logs request/response headers and body
+
+    - Supports HTTPS CONNECT tunneling
+
+    - Rate limits per client IP
+
+    Include tests with a test client.
+
+    '
+  category: real_world
+  expected_files:
+  - proxy.py
+  - test_proxy.py
+- id: g42
+  prompt: 'Write a file watcher utility that monitors a directory for changes
+
+    (create, modify, delete) using watchdog. Debounce events (100ms).
+
+    Callback receives (event_type, file_path). Include tests with temp dir.
+
+    '
+  category: real_world
+  expected_files:
+  - file_watcher.py
+  - test_file_watcher.py
+- id: g43
+  prompt: 'Implement a simple job queue with Redis backend:
+
+    - `enqueue(job_name: str, payload: dict, priority: int = 0)`
+
+    - `dequeue() -> Job | None`
+
+    - `retry(job_id: str, max_retries: int = 3)`
+
+    - Worker process that executes jobs
+
+    Include tests with fakeredis.
+
+    '
+  category: real_world
+  expected_files:
+  - job_queue.py
+  - worker.py
+  - test_job_queue.py
+- id: g44
+  prompt: 'Create a simple ORM-like layer for SQLite with:
+
+    - Model base class with fields (id, created_at, updated_at)
+
+    - Query builder: filter, order_by, limit, offset
+
+    - Relationships: has_one, has_many, belongs_to
+
+    - Migrations: create_table, add_column
+
+    Include tests with in-memory SQLite.
+
+    '
+  category: real_world
+  expected_files:
+  - orm.py
+  - test_orm.py
+- id: g45
+  prompt: 'Build a simple feature flag system:
+
+    - `is_enabled(flag: str, user_id: str = None) -> bool`
+
+    - Support: boolean, percentage rollout, user allowlist
+
+    - Config from YAML file with hot reload
+
+    - Thread-safe. Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - feature_flags.py
+  - test_feature_flags.py
+- id: g46
+  prompt: 'Write a circuit breaker decorator for async functions:
+
+    `@circuit_breaker(failure_threshold=5, recovery_timeout=30)`
+
+    Tracks failures, opens circuit, allows probe requests after timeout.
+
+    Thread-safe. Include metrics and tests.
+
+    '
+  category: real_world
+  expected_files:
+  - circuit_breaker.py
+  - test_circuit_breaker.py
+- id: g47
+  prompt: 'Implement a distributed lock using Redis:
+
+    `acquire_lock(key: str, timeout: int = 10, ttl: int = 30) -> Lock`
+
+    Lock supports: `__enter__`, `__exit__`, `extend(ttl)`, `release()`.
+
+    Auto-release on TTL expiry. Include tests with fakeredis.
+
+    '
+  category: real_world
+  expected_files:
+  - distributed_lock.py
+  - test_distributed_lock.py
+- id: g48
+  prompt: 'Create an idempotency key system for API endpoints:
+
+    - `check_idempotency(key: str) -> Result | None`
+
+    - `store_result(key: str, result: Any, ttl: int = 86400)`
+
+    Uses Redis with TTL. Handles concurrent requests correctly.
+
+    Include FastAPI dependency and tests.
+
+    '
+  category: real_world
+  expected_files:
+  - idempotency.py
+  - test_idempotency.py
+- id: g49
+  prompt: 'Build a simple metrics collector:
+
+    - `increment(counter: str, tags: dict = None)`
+
+    - `gauge(name: str, value: float, tags: dict = None)`
+
+    - `histogram(name: str, value: float, tags: dict = None)`
+
+    - Export to Prometheus format (`/metrics` endpoint)
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - metrics.py
+  - test_metrics.py
+- id: g50
+  prompt: 'Implement a simple event sourcing aggregate base class:
+
+    - `apply(event)` mutates state
+
+    - `record(event)` adds to uncommitted events
+
+    - `get_uncommitted() -> list[Event]`
+
+    - `mark_committed()` clears uncommitted
+
+    Event store: append-only, replay from snapshots.
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - event_sourcing.py
+  - test_event_sourcing.py
+- id: g51
+  prompt: 'Create a simple CLI framework:
+
+    - `@command(name="...")` decorator
+
+    - Automatic argument parsing from type hints
+
+    - Support: positional, optional, flag, choice
+
+    - Subcommands via nested classes
+
+    - Help generation. Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - cli_framework.py
+  - test_cli.py
+- id: g52
+  prompt: 'Write a database migration runner:
+
+    - Migrations as SQL files with version prefix (001_, 002_)
+
+    - Tracks applied migrations in `schema_migrations` table
+
+    - Supports up/down, rollback to version
+
+    - Dry-run mode. Include tests with temp DB.
+
+    '
+  category: real_world
+  expected_files:
+  - migrate.py
+  - test_migrate.py
+- id: g53
+  prompt: 'Implement a simple message broker with topics:
+
+    - `subscribe(topic: str, handler: Callable)`
+
+    - `publish(topic: str, message: dict)`
+
+    - `unsubscribe(topic: str)`
+
+    - At-least-once delivery with ack/nack
+
+    - In-memory + Redis backend. Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - message_broker.py
+  - test_message_broker.py
+- id: g54
+  prompt: 'Create a simple caching decorator with:
+
+    - `@cache(ttl=60, key_prefix="user")`
+
+    - Supports: memory, Redis backends
+
+    - Key generation from function args
+
+    - Cache invalidation: `invalidate(prefix)`
+
+    Thread-safe. Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - cache_decorator.py
+  - test_cache_decorator.py
+- id: g55
+  prompt: 'Build a simple health check registry:
+
+    - `register_check(name: str, check: Callable[[], HealthResult])`
+
+    - `run_checks() -> dict[str, HealthResult]`
+
+    - Built-in: disk_space, db_connection, external_service
+
+    - `/health` and `/health/ready` endpoints
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - health_checks.py
+  - test_health_checks.py
+- id: g56
+  prompt: 'Write a simple API versioning middleware for FastAPI:
+
+    - Detect version from header: `Accept: application/vnd.myapp.v2+json`
+
+    - Or URL path: `/api/v1/...`, `/api/v2/...`
+
+    - Route to versioned routers
+
+    - Deprecation warnings in headers
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - api_versioning.py
+  - test_api_versioning.py
+- id: g57
+  prompt: 'Implement a simple rate limiter with multiple algorithms:
+
+    - Token bucket, sliding window, fixed window
+
+    - Configurable per endpoint/user/IP
+
+    - Redis-backed for distributed systems
+
+    - FastAPI dependency: `rate_limit(requests=100, window=60)`
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - rate_limiter_advanced.py
+  - test_rate_limiter.py
+- id: g58
+  prompt: 'Create a simple audit log system:
+
+    - `log_event(action: str, resource: str, user_id: str, metadata: dict)`
+
+    - Immutable append-only storage (SQLite/PostgreSQL)
+
+    - Query: by user, resource, time range, action
+
+    - Export to JSON/CSV. Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - audit_log.py
+  - test_audit_log.py
+- id: g59
+  prompt: 'Build a simple feature toggle with A/B testing:
+
+    - `get_variant(user_id: str, experiment: str) -> str`
+
+    - Variants: control, treatment (configurable weights)
+
+    - Consistent assignment (hash-based)
+
+    - Track conversions: `track_conversion(user_id, experiment)`
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - ab_testing.py
+  - test_ab_testing.py
+- id: g60
+  prompt: 'Implement a simple workflow engine:
+
+    - Define workflow as DAG of steps: `Step(name, fn, deps=[])`
+
+    - `execute(workflow, input_data)` runs steps in topological order
+
+    - Parallel execution of independent steps
+
+    - Checkpointing: save state after each step
+
+    - Retry failed steps with backoff
+
+    Include tests.
+
+    '
+  category: real_world
+  expected_files:
+  - workflow_engine.py
+  - test_workflow_engine.py

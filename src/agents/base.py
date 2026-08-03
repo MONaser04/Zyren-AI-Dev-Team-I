@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.gateway.llm_client import LLMClient
+    from gateway.llm_client import LLMClient
 
 
 @dataclass

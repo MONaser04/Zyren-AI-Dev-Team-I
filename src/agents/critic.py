@@ -13,12 +13,12 @@ Phase 2 enhancements:
 
 from __future__ import annotations
 
-from src.observability.instrumentation import trace_agent_invocation
+from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.base import BaseAgent
-from src.contracts.schemas import (
+from agents.base import BaseAgent
+from contracts.schemas import (
     CodePatch,
     EscalationLevel,
     RebuttalJudgment,
@@ -32,7 +32,7 @@ from src.contracts.schemas import (
 )
 
 if TYPE_CHECKING:
-    from src.gateway.llm_client import LLMClient
+    from gateway.llm_client import LLMClient
 
 # ============================================================
 # System Prompts

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A Multi-Agent SDLC Engine — self-hosted AI dev team with grounded verification"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 
 dependencies = [
     # --- Orchestration Engine ---
@@ -26,7 +26,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.28,<2.0",
     "deepeval>=4.0.8",
     "promptfoo>=0.1.4",
-    "scipy>=1.18.0",
+    "scipy>=1.11.0,<1.18.0",
     "scikit-learn>=1.9.0",
     "pyrit>=0.9.0",
     "garak>=0.13.3",
@@ -147,3 +147,4 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
+pythonpath = ["src"]

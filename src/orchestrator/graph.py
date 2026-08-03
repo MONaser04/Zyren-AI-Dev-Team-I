@@ -23,10 +23,10 @@ from typing import TYPE_CHECKING, Any, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from src.agents.coder import CoderAgent
-from src.agents.critic import CriticAgent
-from src.agents.tester import TesterAgent
-from src.contracts.schemas import (
+from agents.coder import CoderAgent
+from agents.critic import CriticAgent
+from agents.tester import TesterAgent
+from contracts.schemas import (
     CodePatch,
     RebuttalOutcome,
     RebuttalRequest,
@@ -108,6 +108,8 @@ class GraphState(TypedDict, total=False):
     routing_decision: dict[str, Any]  # RoutingDecision.model_dump()
     fast_lane: bool
     complexity: str  # "simple" | "medium" | "complex"
+    domain: str  # "software_engineering" | "deep_research" | "media_production"
+    swe_sub: dict[str, Any]  # SWEComplexityDecision.model_dump() | None
     
     # Full SDLC outputs
     product_requirements: dict[str, Any]  # ProductRequirementDoc
@@ -120,6 +122,9 @@ class GraphState(TypedDict, total=False):
     integrator_output: dict[str, Any]  # IntegratorOutput
     docs_adr: dict[str, Any]  # DocsOutput (post-arch)
     docs_final: dict[str, Any]  # DocsOutput (post-integration)
+
+    # Deep Research domain output
+    deep_research_report: dict[str, Any]  # ResearchReport
 
     # Event versioning
     event_version: int
@@ -476,9 +481,8 @@ def _rebuttal_outcome_router(state: GraphState) -> str:
 def _route_node(
     state: GraphState, router: "SemanticRouter", event_store: EventStore
 ) -> dict[str, Any]:
-    """Run semantic router and emit a ROUTING_DECIDED event."""
+    """Run the multi-department semantic router and emit a ROUTING_DECIDED event."""
     from state.events import routing_decided_event  # imported here to avoid circular
-    from contracts.schemas import RoutingDecision
 
     decision = router.classify(
         task_description=state["task_description"],
@@ -495,19 +499,69 @@ def _route_node(
     )
     event_store.append(event)
 
+    # Extract SE sub-route fields when available
+    swe_sub_dump = decision.swe_sub.model_dump() if decision.swe_sub else None
+    complexity = (
+        decision.swe_sub.complexity.value if decision.swe_sub else ""
+    )
+
     return {
         **state,
         "routing_decision": decision.model_dump(),
-        "complexity": decision.complexity.value,
+        "domain": decision.domain.value,
+        "complexity": complexity,
         "fast_lane": decision.fast_lane,
+        "swe_sub": swe_sub_dump,
         "event_version": version,
         "last_event_id": event.event_id,
     }
 
 
 def _route_decision(state: GraphState) -> str:
-    """Route to Fast Lane or Full SDLC based on semantic router decision."""
+    """Route to the correct domain lane based on semantic router decision.
+
+    Returns one of:
+        'fast'             — SE domain, simple + high confidence
+        'full'             — SE domain, medium/complex or low confidence
+        'deep_research'    — Deep Research domain
+        'media_production' — Media Production domain
+    """
+    domain = state.get("domain", "software_engineering")
+    if domain == "deep_research":
+        return "deep_research"
+    if domain == "media_production":
+        return "media_production"
+    # Software Engineering sub-routing
     return "fast" if state.get("fast_lane", False) else "full"
+
+
+def _deep_research_node(
+    state: GraphState, agent: "DeepResearchAgent", event_store: "EventStore"
+) -> dict[str, Any]:
+    """Run the DeepResearchAgent and emit a DEEP_RESEARCH_COMPLETED event."""
+    from state.events import deep_research_completed_event
+
+    report = agent.run(
+        query=state["task_description"],
+        workflow_id=state.get("workflow_id", ""),
+    )
+
+    version = _next_version(state)
+    event = deep_research_completed_event(
+        workflow_id=state["workflow_id"],
+        version=version,
+        report_data=report.model_dump(mode="json"),
+        causation_id=state.get("last_event_id"),
+        correlation_id=state.get("correlation_id"),
+    )
+    event_store.append(event)
+
+    return {
+        **state,
+        "deep_research_report": report.model_dump(),
+        "event_version": version,
+        "last_event_id": event.event_id,
+    }
 
 
 def _product_analyst_node(
@@ -618,12 +672,12 @@ def _fanout_ux_node(state: GraphState, agent: "UXAgent", event_store: "EventStor
 
 def _fanout_db_node(state: GraphState, agent: "DBEngineerAgent", event_store: "EventStore") -> dict[str, Any]:
     from state.events import db_schema_event
-    from contracts.schemas import ArchitectDesign, ProductRequirementDoc
+    from contracts.schemas import ArchitectDesign, TaskDAG
     
     arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
-    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    dag = TaskDAG.model_validate(state.get("task_dag", {}))
     
-    schema = agent.run(arch, prd)
+    schema = agent.run(arch, dag)
     
     version = _next_version(state)
     event = db_schema_event(
@@ -643,8 +697,9 @@ def _fanout_security_node(state: GraphState, agent: "SecurityAgent", event_store
     from state.events import security_report_event
     from contracts.schemas import ArchitectDesign
     
-    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
-    report = agent.run(arch)
+    code_patch = state.get("code_patch", {}) or state.get("generated_code", {})
+    arch_dict = state.get("architect_design", {})
+    report = agent.run(code_patch, arch_dict)
     
     version = _next_version(state)
     event = security_report_event(
@@ -685,10 +740,23 @@ def _fanout_researcher_node(state: GraphState, agent: "ResearcherAgent", event_s
 
 def _fanout_coder_node(state: GraphState, agent: "CoderAgent", event_store: "EventStore") -> dict[str, Any]:
     from state.events import code_submitted_event
+    from contracts.schemas import TaskAssignment
     
     iteration = state.get("current_iteration", 1)
-    # The SDLC path uses the full state dict for Coder
-    patch = agent.run(state)
+    
+    if "task_assignment" in state and state["task_assignment"]:
+        task = TaskAssignment(**state["task_assignment"])
+    else:
+        task = TaskAssignment(
+            workflow_id=state.get("workflow_id", ""),
+            description=state.get("task_description", ""),
+            language=state.get("language", "python"),
+            constraints=state.get("constraints", []),
+            iteration=iteration,
+            prior_feedback=state.get("feedback", ""),
+        )
+        
+    patch = agent.run(task)
     
     version = _next_version(state)
     event = code_submitted_event(
@@ -772,8 +840,72 @@ def _docs_int_node(state: GraphState, agent: "DocsAgent", event_store: "EventSto
         "event_version": version,
         "last_event_id": event.event_id,
     }
+
 def _increment_node(state: GraphState) -> dict[str, Any]:
     return {"current_iteration": state.get("current_iteration", 1) + 1}
+
+
+# ============================================================
+# HITL Gate Nodes
+# ============================================================
+
+
+def _hitl_pre_code_node(
+    state: GraphState, hitl_manager: "HITLManager"
+) -> dict[str, Any]:
+    """HITL gate before code generation (Full SDLC path only)."""
+    from orchestrator.hitl import ApprovalStatus
+
+    plan_summary = str(state.get("task_dag", {}))[:500]
+    status = hitl_manager.pre_code_approval(
+        workflow_id=state.get("workflow_id", ""),
+        iteration=state.get("current_iteration", 1),
+        plan=plan_summary,
+    )
+
+    if status == ApprovalStatus.REJECTED:
+        return {**state, "error": "HITL: Pre-code approval rejected by human reviewer"}
+
+    return state
+
+
+def _hitl_post_test_node(
+    state: GraphState, hitl_manager: "HITLManager"
+) -> dict[str, Any]:
+    """HITL gate after testing — human reviews test results."""
+    from orchestrator.hitl import ApprovalStatus
+
+    test_summary = str(state.get("verification_report", {}))[:500]
+    status = hitl_manager.post_test_approval(
+        workflow_id=state.get("workflow_id", ""),
+        iteration=state.get("current_iteration", 1),
+        test_results=test_summary,
+    )
+
+    if status == ApprovalStatus.REJECTED:
+        return {**state, "error": "HITL: Post-test approval rejected by human reviewer"}
+
+    return state
+
+
+def _hitl_security_node(
+    state: GraphState, hitl_manager: "HITLManager"
+) -> dict[str, Any]:
+    """HITL gate for security review."""
+    from orchestrator.hitl import ApprovalStatus
+
+    security_findings = str(state.get("security_report", {}))[:500]
+    status = hitl_manager.security_review(
+        workflow_id=state.get("workflow_id", ""),
+        iteration=state.get("current_iteration", 1),
+        findings=security_findings,
+    )
+
+    if status == ApprovalStatus.REJECTED:
+        return {**state, "error": "HITL: Security review rejected by human reviewer"}
+
+    return state
+
 
 # ============================================================
 # Graph Compilation
@@ -782,23 +914,31 @@ def _increment_node(state: GraphState) -> dict[str, Any]:
 def build_feedback_loop(
     event_store: "EventStore",
     llm_client: "LLMClient",
+    hitl_manager: "HITLManager | None" = None,
 ) -> StateGraph:
-    """Compile the LangGraph state machine with all agents (Phase 4)."""
+    """Compile the LangGraph state machine with all agents (Phase 4).
+
+    Args:
+        event_store: Event store for persistence.
+        llm_client: LLM client for agent calls.
+        hitl_manager: Optional HITL manager for human approval gates.
+    """
     from functools import partial
     
-    from src.agents.coder import CoderAgent
-    from src.agents.tester import TesterAgent
-    from src.agents.critic import CriticAgent
-    from src.orchestrator.semantic_router import SemanticRouter
-    from src.agents.product_analyst import ProductAnalystAgent
-    from src.agents.planner import PlannerAgent
-    from src.agents.architect import ArchitectAgent
-    from src.agents.ux import UXAgent
-    from src.agents.db_engineer import DBEngineerAgent
-    from src.agents.security import SecurityAgent
-    from src.agents.researcher import ResearcherAgent
-    from src.agents.integrator import IntegratorAgent
-    from src.agents.docs import DocsAgent
+    from agents.coder import CoderAgent
+    from agents.tester import TesterAgent
+    from agents.critic import CriticAgent
+    from orchestrator.semantic_router import SemanticRouter
+    from agents.product_analyst import ProductAnalystAgent
+    from agents.planner import PlannerAgent
+    from agents.architect import ArchitectAgent
+    from agents.ux import UXAgent
+    from agents.db_engineer import DBEngineerAgent
+    from agents.security import SecurityAgent
+    from agents.researcher import ResearcherAgent
+    from agents.integrator import IntegratorAgent
+    from agents.docs import DocsAgent
+    from agents.deep_research import DeepResearchAgent
 
     coder = CoderAgent(agent_id="c1", llm_client=llm_client)
     tester = TesterAgent(agent_id="t1")
@@ -814,9 +954,29 @@ def build_feedback_loop(
     res = ResearcherAgent(agent_id="res1", llm_client=llm_client)
     integ = IntegratorAgent(agent_id="in1", llm_client=llm_client)
     docs = DocsAgent(agent_id="doc1", llm_client=llm_client)
+    from tools.mcp_registry import MCPRegistry
+    from tools.policy_engine import PolicyEngine
+    from tools.tool_executor import ToolExecutor
+    
+    mcp_reg = MCPRegistry()
+    policy_engine = PolicyEngine()
+    tool_executor = ToolExecutor(registry=mcp_reg, policy_engine=policy_engine)
+
+    deep_res = DeepResearchAgent(
+        llm_client=llm_client, 
+        agent_id="dr1",
+        mcp_registry=mcp_reg,
+        tool_executor=tool_executor
+    )
+
+    # Create default HITL manager if none provided (auto-approve = no-op)
+    if hitl_manager is None:
+        from orchestrator.hitl import create_hitl_manager
+        hitl_manager = create_hitl_manager(backend="auto", enabled_gates=[])
 
     workflow = StateGraph(GraphState)
 
+    # Core loop nodes
     workflow.add_node("assign_task", partial(_assign_task_node, event_store=event_store))
     workflow.add_node("coder", partial(_coder_node, coder=coder, event_store=event_store))
     workflow.add_node("tester", partial(_tester_node, tester=tester, event_store=event_store))
@@ -827,6 +987,7 @@ def build_feedback_loop(
     workflow.add_node("complete", partial(_complete_node, event_store=event_store))
     workflow.add_node("fail", partial(_fail_node, event_store=event_store))
 
+    # Routing + Full SDLC nodes
     workflow.add_node("route", partial(_route_node, router=router, event_store=event_store))
     workflow.add_node("product_analyst", partial(_product_analyst_node, agent=pa, event_store=event_store))
     workflow.add_node("planner", partial(_planner_node, agent=planner, event_store=event_store))
@@ -843,13 +1004,41 @@ def build_feedback_loop(
     workflow.add_node("docs_arch", partial(_docs_arch_node, agent=docs, event_store=event_store))
     workflow.add_node("docs_int", partial(_docs_int_node, agent=docs, event_store=event_store))
 
+    # HITL gate nodes
+    workflow.add_node("hitl_pre_code", partial(_hitl_pre_code_node, hitl_manager=hitl_manager))
+    workflow.add_node("hitl_post_test", partial(_hitl_post_test_node, hitl_manager=hitl_manager))
+    workflow.add_node("hitl_security", partial(_hitl_security_node, hitl_manager=hitl_manager))
+
+    # === Graph Edges ===
+
     workflow.set_entry_point("assign_task")
     
     workflow.add_edge("assign_task", "route")
-    workflow.add_conditional_edges("route", _route_decision, {"fast": "coder", "full": "product_analyst"})
+    # Deep Research domain node
+    workflow.add_node("deep_research_entry", partial(_deep_research_node, agent=deep_res, event_store=event_store))
+    # Placeholder terminal node for Media Production
+    workflow.add_node("media_production_entry", lambda s: {**s, "domain": "media_production"})
 
+    workflow.add_conditional_edges(
+        "route",
+        _route_decision,
+        {
+            "fast": "coder",
+            "full": "product_analyst",
+            "deep_research": "deep_research_entry",
+            "media_production": "media_production_entry",
+        },
+    )
+
+    # New domain entry points route to complete for now;
+    # downstream pipeline nodes will be wired here.
+    workflow.add_edge("deep_research_entry", "complete")
+    workflow.add_edge("media_production_entry", "complete")
+
+    # Fast lane: coder → tester → hitl_post_test → critic
     workflow.add_edge("coder", "tester")
-    workflow.add_edge("tester", "critic")
+    workflow.add_edge("tester", "hitl_post_test")
+    workflow.add_edge("hitl_post_test", "critic")
     workflow.add_conditional_edges(
         "critic",
         _should_continue,
@@ -882,16 +1071,25 @@ def build_feedback_loop(
     workflow.add_edge("complete", END)
     workflow.add_edge("fail", END)
 
+    # Full SDLC path
     workflow.add_edge("product_analyst", "planner")
     workflow.add_edge("planner", "architect")
     
+    # Fan-out from architect (parallel)
     workflow.add_edge("architect", "ux")
     workflow.add_edge("architect", "db")
     workflow.add_edge("architect", "security")
     workflow.add_edge("architect", "researcher")
-    workflow.add_edge("architect", "coder_sdlc")
-    
-    workflow.add_edge(["ux", "db", "security", "researcher", "coder_sdlc"], "integrator")
+    workflow.add_edge("architect", "hitl_pre_code")  # HITL gate before coding
+
+    # HITL pre-code feeds into coder
+    workflow.add_edge("hitl_pre_code", "coder_sdlc")
+
+    # Security fan-out goes through HITL security review
+    workflow.add_edge("security", "hitl_security")
+
+    # Fan-in: all parallel branches → integrator
+    workflow.add_edge(["ux", "db", "hitl_security", "researcher", "coder_sdlc"], "integrator")
     
     workflow.add_edge("integrator", "docs_arch")
     workflow.add_edge("docs_arch", "tester")
@@ -899,3 +1097,4 @@ def build_feedback_loop(
     workflow.add_edge("docs_int", "complete")
 
     return workflow
+

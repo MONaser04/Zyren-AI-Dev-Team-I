@@ -1,11 +1,11 @@
 """Observability package — OpenTelemetry tracing + metrics + instrumentation (Phase 4)."""
 
-from src.observability.instrumentation import (
+from observability.instrumentation import (
     trace_agent_invocation,
     trace_chat,
     trace_tool_execution,
 )
-from src.observability.metrics import (
+from observability.metrics import (
     MetricsConfig,
     record_agent_invocation,
     record_operation_duration,
@@ -13,7 +13,7 @@ from src.observability.metrics import (
     record_tool_execution,
     setup_metrics,
 )
-from src.observability.tracing import (
+from observability.tracing import (
     GEN_AI_AGENT_ROLE,
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,

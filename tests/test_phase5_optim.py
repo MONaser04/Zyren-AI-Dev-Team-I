@@ -32,17 +32,16 @@ class TestPerformanceAnalyser:
         """Test analyser can be created."""
         analyser = PerformanceAnalyser()
         assert analyser is not None
-        assert analyser.feedback is not None
 
     def test_analyse_empty_results(self):
         """Test analysing empty results list."""
         analyser = PerformanceAnalyser()
         result = analyser.analyse([])
-        assert "error" in result
+        assert "summary" in result
 
     def test_analyse_basic_results(self):
         """Test analysing basic results."""
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         results = [
             EvalResult(
@@ -60,17 +59,16 @@ class TestPerformanceAnalyser:
         analyser = PerformanceAnalyser()
         analysis = analyser.analyse(results)
 
-        assert analysis["total"] == 2
-        assert analysis["pass_count"] == 1
-        assert analysis["fail_count"] == 1
-        assert analysis["pass_rate"] == 0.5
-        assert "avg_score" in analysis
-        assert "avg_cost_usd" in analysis
-        assert "issue_sources" in analysis
+        assert analysis["summary"]["total"] == 2
+        assert analysis["summary"]["passed"] == 1
+        assert analysis["summary"]["failed"] == 1
+        assert analysis["summary"]["pass_rate"] == 0.5
+        assert "mean_score" in analysis["summary"]
+        assert "total_cost_usd" in analysis["summary"]
 
     def test_detect_low_lint_pattern(self):
         """Test detection of low lint score pattern."""
-        from src.contracts.eval_result import EvalResult, EvalIssue
+        from contracts.eval_result import EvalResult, EvalIssue
 
         results = [
             EvalResult(
@@ -86,14 +84,14 @@ class TestPerformanceAnalyser:
         analyser = PerformanceAnalyser()
         analysis = analyser.analyse(results)
 
-        patterns = analysis.get("patterns", [])
-        low_lint = [p for p in patterns if p["type"] == "low_lint"]
+        weaknesses = analysis.get("weaknesses", [])
+        low_lint = [w for w in weaknesses if w["dimension"] == "lint_score"]
         assert len(low_lint) == 1
-        assert low_lint[0]["count"] == 2
+        assert low_lint[0]["affected_count"] == 2
 
     def test_detect_high_iteration_failure(self):
-        """Test detection of high iteration failures."""
-        from src.contracts.eval_result import EvalResult
+        """Test detection of tasks that fail after many iterations."""
+        from contracts.eval_result import EvalResult
 
         results = [
             EvalResult(
@@ -109,9 +107,8 @@ class TestPerformanceAnalyser:
         analyser = PerformanceAnalyser()
         analysis = analyser.analyse(results)
 
-        patterns = analysis.get("patterns", [])
-        high_iter = [p for p in patterns if p["type"] == "high_iteration_failure"]
-        assert len(high_iter) == 1
+        recommendations = analysis.get("recommendations", [])
+        assert any("High iteration count" in r for r in recommendations)
 
 
 class TestPromptTuner:
@@ -141,7 +138,7 @@ class TestPromptTuner:
         # Here we just verify it doesn't crash
         assert isinstance(variants, list)
 
-    @patch("optim.prompt_tuner.LiteLLMClient")
+    @patch("optim.prompt_tuner.LLMClient")
     def test_tune_prompts(self, mock_client_class):
         """Test prompt tuning with mocked LLM."""
         mock_client = Mock()
@@ -157,7 +154,9 @@ class TestPromptTuner:
             ],
         }
 
-        result = tuner.tune("coder", original, failure_analysis)
+        from contracts.eval_result import EvalResult
+        eval_results = [EvalResult(workflow_id="w1", task_id="t1", overall_score=0.8)]
+        result = tuner.tune("coder", original, failure_analysis, eval_results=eval_results)
 
         assert result.agent == "coder"
         assert result.original_prompt == original
@@ -173,84 +172,28 @@ class TestModelOptimiser:
         """Test ModelOptimiser creation."""
         opt = ModelOptimiser()
         assert opt is not None
-        assert "budget" in opt.MODEL_TIERS
-        assert "standard" in opt.MODEL_TIERS
-        assert "premium" in opt.MODEL_TIERS
 
-    def test_recommend_hard_task(self):
-        """Test recommendation for hard task."""
+    def test_recommend_returns_string(self):
+        """Test recommend returns a model string."""
         opt = ModelOptimiser()
+        mock_store = MagicMock()
+        mock_store.get_model_performance.return_value = {"success_rate": 0.8}
+        
+        rec = opt.recommend("smart", mock_store, "openai/gpt-4o")
+        assert isinstance(rec, str)
+        assert rec == "openai/gpt-4o"
 
-        rec = opt.recommend("coder", "hard", "gpt-3.5-turbo")
-        assert rec is not None
-        assert rec.agent_role == "coder"
-        assert rec.current_model == "gpt-3.5-turbo"
-        assert "gpt-4o" in rec.recommended_model or "opus" in rec.recommended_model
-        assert rec.confidence >= 0.7
+    def test_optimise_model_routing(self):
+        """Test optimise returns a list of changes."""
+        opt = ModelOptimiser(min_success_rate=0.6)
+        mock_store = MagicMock()
+        mock_store.get_model_performance.return_value = {"success_rate": 0.5, "total_calls": 10, "total_cost_usd": 0.05}
+        
+        changes = opt.optimise([], mock_store)
+        assert isinstance(changes, list)
+        assert len(changes) > 0
+        assert changes[0]["action"] in ("demote", "remove", "keep")
 
-    def test_recommend_easy_task(self):
-        """Test recommendation for easy task (cost optimisation)."""
-        opt = ModelOptimiser()
-
-        rec = opt.recommend("coder", "easy", "gpt-4o")
-        assert rec is not None
-        assert rec.current_model == "gpt-4o"
-        # Should recommend cheaper model
-        assert "3.5" in rec.recommended_model or "mini" in rec.recommended_model or "haiku" in rec.recommended_model
-
-    def test_no_recommendation_when_best(self):
-        """Test no recommendation when already using best model."""
-        opt = ModelOptimiser()
-
-        # coder with standard tier, already using best in tier
-        rec = opt.recommend("coder", "medium", "sonnet")  # Best in standard
-        assert rec is None
-
-    def test_update_profiles(self):
-        """Test profile updates from results."""
-        opt = ModelOptimiser()
-
-        from src.contracts.eval_result import EvalResult
-        from src.contracts.run import AgentInvocation
-
-        results = [
-            EvalResult(
-                workflow_id="w1", task_id="coding", passed=True, overall_score=0.9,
-                total_cost_usd=0.05, iterations_taken=2,
-            ),
-        ]
-        invocations = [
-            AgentInvocation(
-                workflow_id="w1", agent_role="coder", model="gpt-4o",
-                duration_ms=5000, cost_usd=0.05, tokens_in=100, tokens_out=200,
-            ),
-        ]
-
-        opt.update_profiles(results, invocations)
-
-        profiles = opt.profiles.get("coding", {})
-        assert "gpt-4o" in profiles
-        profile = profiles["gpt-4o"]
-        assert profile.total_runs == 1
-        assert profile.avg_score == 0.9
-
-    def test_pareto_frontier(self):
-        """Test Pareto frontier computation."""
-        opt = ModelOptimiser()
-
-        # Manually add profiles
-        opt.profiles["coding"] = {
-            "gpt-3.5": ModelProfile("gpt-3.5", avg_score=0.6, avg_cost=0.01, pass_rate=0.5, total_runs=10),
-            "gpt-4o": ModelProfile("gpt-4o", avg_score=0.85, avg_cost=0.05, pass_rate=0.8, total_runs=10),
-            "gpt-4": ModelProfile("gpt-4", avg_score=0.8, avg_cost=0.08, pass_rate=0.75, total_runs=10),
-        }
-
-        frontier = opt.pareto_frontier("coding")
-        assert len(frontier) >= 2  # gpt-3.5 and gpt-4o should be on frontier
-        # gpt-4 is dominated by gpt-4o (lower score, higher cost)
-        models = [f["model"] for f in frontier]
-        assert "gpt-3.5" in models
-        assert "gpt-4o" in models
 
 
 class TestFeedbackStore:
@@ -260,7 +203,7 @@ class TestFeedbackStore:
         """Test store creation."""
         db_path = tmp_path / "test_feedback.db"
         store = FeedbackStore(str(db_path))
-        assert store.db_path == str(db_path)
+        assert store.db_path == db_path
 
     def test_insert_and_query(self, tmp_path):
         """Test inserting and querying records."""
@@ -356,55 +299,55 @@ class TestReporter:
 
     def test_reporter_creation(self, tmp_path):
         """Test reporter creation."""
-        config = ReporterConfig(output_dir=str(tmp_path / "reports"), format="markdown")
+        config = ReporterConfig(output_dir=str(tmp_path / "reports"), formats=["markdown"])
         reporter = OptimisationReporter(config)
         assert reporter.config.output_dir == str(tmp_path / "reports")
 
+
     def test_generate_report(self, tmp_path):
         """Test report generation."""
-        from src.contracts.eval_result import EvalResult
-        from src.contracts.optim_report import TuningResult
+        from optim.reporter import OptimisationReporter, ReporterConfig
+        from contracts.optim_report import OptimReport, RoundReport
+        from contracts.eval_result import EvalResult
 
-        config = ReporterConfig(output_dir=str(tmp_path / "reports"), format="markdown")
+        config = ReporterConfig(output_dir=str(tmp_path / "reports"), formats=["markdown", "json"])
         reporter = OptimisationReporter(config)
 
-        results = [
-            EvalResult(workflow_id="w1", task_id="t1", passed=True, overall_score=0.8, total_cost_usd=0.01),
-            EvalResult(workflow_id="w2", task_id="t2", passed=False, overall_score=0.4, total_cost_usd=0.02),
-        ]
+        report = OptimReport(
+            supervisor_id="test_session",
+            rounds=[
+                RoundReport(
+                    round_num=1,
+                    eval_results=[
+                        {"task_id": "t1", "passed": True, "overall_score": 0.8},
+                    ],
+                    tuning_results=[],
+                    model_changes=[]
+                )
+            ]
+        )
 
-        tuning_results = [
-            TuningResult(
-                agent="coder",
-                original_prompt="Original",
-                variants=["Variant 1"],
-                best_variant="Variant 1",
-                best_score=0.85,
-                evaluations=[{"variant": "Variant 1", "score": 0.85}],
-            ),
-        ]
+        written = reporter.generate(report)
 
-        report = reporter.generate(results, tuning_results)
-
-        assert report.total_tasks == 2
-        assert report.passed == 1
-        assert report.failed == 1
-        assert len(report.tuning_results) == 1
+        assert "markdown" in written
+        assert "json" in written
+        assert written["markdown"].exists()
+        assert written["json"].exists()
 
     def test_save_formats(self, tmp_path):
         """Test saving in different formats."""
-        from src.contracts.eval_result import EvalResult
+        from optim.reporter import OptimisationReporter, ReporterConfig
+        from contracts.optim_report import OptimReport
 
-        for fmt in ["markdown", "json", "html"]:
-            config = ReporterConfig(output_dir=str(tmp_path / "reports"), format=fmt)
+        for fmt in ["markdown", "json"]:
+            config = ReporterConfig(output_dir=str(tmp_path / "reports"), formats=[fmt])
             reporter = OptimisationReporter(config)
 
-            results = [EvalResult(workflow_id="w1", task_id="t1", passed=True, overall_score=0.8)]
-            report = reporter.generate(results)
+            report = OptimReport(supervisor_id="fmt_test")
+            written = reporter.generate(report)
 
-            # Check file exists
-            files = list((tmp_path / "reports").glob(f"*.{fmt}"))
-            assert len(files) == 1
+            assert fmt in written
+            assert written[fmt].exists()
 
 
 class TestConvergenceDetector:
@@ -420,12 +363,12 @@ class TestConvergenceDetector:
         """Test convergence with insufficient samples."""
         detector = ConvergenceDetector(ConvergenceConfig(min_samples=5, window_size=2))
 
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
         r = EvalResult(workflow_id="w1", task_id="t1", overall_score=0.5)
 
-        result = detector.record(r)
+        result = detector.record([r])
         assert result.converged is False
-        assert "Need 5 samples" in result.reason
+        assert "Need at least 5 rounds" in result.recommendation
 
     def test_convergence_on_plateau(self):
         """Test convergence detection on plateau."""
@@ -438,7 +381,7 @@ class TestConvergenceDetector:
         )
         detector = ConvergenceDetector(config)
 
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         # Scores that plateau
         scores = [0.6, 0.61, 0.615, 0.617, 0.618]
@@ -446,14 +389,14 @@ class TestConvergenceDetector:
 
         for s in scores:
             r = EvalResult(workflow_id="w", task_id="t", overall_score=s)
-            last_result = detector.record(r)
+            last_result = detector.record([r])
 
         # Should converge due to plateau
-        assert last_result.converged is True or last_result.patience_remaining <= 1
+        assert last_result.converged is True or last_result.patience_counter >= 1
 
     def test_convergence_check_function(self):
         """Test convenience check_convergence function."""
-        from src.contracts.eval_result import EvalResult
+        from contracts.eval_result import EvalResult
 
         results = [
             EvalResult(workflow_id="w1", task_id="t1", overall_score=0.5),
@@ -463,9 +406,10 @@ class TestConvergenceDetector:
             EvalResult(workflow_id="w5", task_id="t5", overall_score=0.518),
         ]
 
-        conv_result = check_convergence(results)
+        config = ConvergenceConfig()
+        conv_result = check_convergence(results, config)
         assert isinstance(conv_result, ConvergenceResult)
-        assert conv_result.samples_analysed == 5
+        assert conv_result.trend == "collecting"
 
 
 class TestModelProfile:

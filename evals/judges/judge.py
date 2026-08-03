@@ -27,7 +27,7 @@ from typing import Any
 
 import yaml
 
-from src.gateway.llm_client import LLMClient as LiteLLMClient
+from gateway.llm_client import LLMClient as LiteLLMClient
 from evals.judges.calibration import JudgeCalibrator, run_calibration
 
 

@@ -11,8 +11,17 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from src.contracts.eval_result import EvalResult
+from contracts.eval_result import EvalResult
 from optim.feedback_store import FeedbackStore
+
+@dataclass(frozen=True, slots=True)
+class ModelProfile:
+    """Performance profile for a specific model."""
+    model_name: str
+    avg_score: float
+    avg_cost: float
+    pass_rate: float
+    total_runs: int
 
 logger = logging.getLogger(__name__)
 

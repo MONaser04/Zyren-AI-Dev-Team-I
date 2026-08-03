@@ -279,6 +279,84 @@ class HITLManager:
     def get_pending(self) -> list[ApprovalRequest]:
         return [h for h in self.history if h.status == ApprovalStatus.PENDING]
 
+    # ------------------------------------------------------------------
+    # Break-Glass Protocol
+    # ------------------------------------------------------------------
+    def break_glass(self, reason: str, operator: str = "admin") -> None:
+        """Emergency bypass: approve ALL pending gates and temporarily
+        disable approval enforcement.
+
+        This is a security-audited emergency procedure. All actions are logged.
+
+        Args:
+            reason: Mandatory reason for the emergency bypass.
+            operator: Who is invoking break-glass.
+        """
+        import logging
+        audit_logger = logging.getLogger("hitl.audit")
+
+        audit_logger.critical(
+            "🚨 BREAK-GLASS ACTIVATED by %s: %s", operator, reason
+        )
+
+        # Approve all pending requests
+        for req in self.get_pending():
+            req.status = ApprovalStatus.APPROVED
+            req.resolved_at = time.time()
+            req.resolver = f"break_glass:{operator}"
+            req.comment = f"[BREAK-GLASS] {reason}"
+            audit_logger.warning(
+                "Break-glass approved: gate=%s workflow=%s", req.gate, req.workflow_id
+            )
+
+        self._break_glass_active = True
+        self._break_glass_reason = reason
+        self._break_glass_operator = operator
+
+    def is_break_glass_active(self) -> bool:
+        """Check if break-glass is currently active."""
+        return getattr(self, "_break_glass_active", False)
+
+    def reset_break_glass(self, operator: str = "admin") -> None:
+        """Deactivate break-glass and restore normal approval flow."""
+        import logging
+        audit_logger = logging.getLogger("hitl.audit")
+
+        audit_logger.info("Break-glass deactivated by %s", operator)
+        self._break_glass_active = False
+        self._break_glass_reason = ""
+        self._break_glass_operator = ""
+
+    # ------------------------------------------------------------------
+    # Durable State (for persistence across restarts)
+    # ------------------------------------------------------------------
+    def get_state(self) -> dict[str, Any]:
+        """Serialize HITL state for persistence."""
+        return {
+            "enabled_gates": self.enabled_gates,
+            "history": [
+                {
+                    "id": r.id,
+                    "workflow_id": r.workflow_id,
+                    "iteration": r.iteration,
+                    "gate": r.gate,
+                    "title": r.title,
+                    "status": r.status.value,
+                    "created_at": r.created_at,
+                    "resolved_at": r.resolved_at,
+                    "resolver": r.resolver,
+                    "comment": r.comment,
+                }
+                for r in self.history
+            ],
+            "break_glass_active": self.is_break_glass_active(),
+        }
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        """Restore HITL state from persisted data."""
+        self.enabled_gates = state.get("enabled_gates", [])
+        self._break_glass_active = state.get("break_glass_active", False)
+
 
 def create_hitl_manager(
     backend: str = "auto",

@@ -3,7 +3,8 @@
 import pytest
 
 from gateway.cost_tracker import BudgetExceededError, CostTracker, UsageSnapshot
-from gateway.llm_client import CircuitBreakerOpenError, LLMClient
+from gateway.llm_client import LLMClient
+from resilience import CircuitBreakerOpenError
 
 
 class TestLLMClientRouting:
@@ -14,13 +15,12 @@ class TestLLMClientRouting:
         # frontier alias resolves
         resolved = client.resolve_model("frontier")
         assert resolved in [
-            "openai/gpt-4o",
-            "openai/gpt-4.1",
-        ] or resolved.startswith("openai/gpt")
+            "nvidia_nim/deepseek-ai/deepseek-v4-pro",
+        ] or resolved.startswith("nvidia_nim/")
 
         # fast alias resolves
         fast = client.resolve_model("fast")
-        assert "mini" in fast.lower() or "nano" in fast.lower() or "flash" in fast.lower()
+        assert "minimax" in fast.lower() or "fast" in fast.lower()
 
     def test_resolve_exact_model_passthrough(self) -> None:
         client = LLMClient()

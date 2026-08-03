@@ -88,6 +88,24 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
 
+  # ----------------------------------------------------------
+  # Langfuse — LLM Observability (Prompts, Cost, Quality)
+  # ----------------------------------------------------------
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: aidev-langfuse
+    restart: unless-stopped
+    ports:
+      - "${LANGFUSE_PORT:-3000}:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aidev}:${POSTGRES_PASSWORD:-aidev_local}@postgres:5432/${POSTGRES_DB:-aidev_state}
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${LANGFUSE_SECRET:-langfuse-local-secret}
+      - SALT=${LANGFUSE_SALT:-langfuse-local-salt}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 # ============================================================
 # Named Volumes
 # ============================================================

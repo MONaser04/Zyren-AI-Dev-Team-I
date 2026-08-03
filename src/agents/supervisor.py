@@ -21,9 +21,12 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
+
+if TYPE_CHECKING:
+    from orchestrator.runner import run_workflow
 
 from evals.scorer import compute_round_score
 from optim.analyser import analyse_round
@@ -32,10 +35,15 @@ from optim.feedback_store import FeedbackStore
 from optim.model_optimiser import optimise_model_routing
 from optim.prompt_tuner import tune_prompts
 from optim.reporter import write_reports
-from src.agents.base import BaseAgent, AgentResult
-from src.contracts.eval_result import EvalResult
-from src.contracts.optim_report import OptimReport, RoundReport
-# from src.orchestrator.runner import run_workflow  # Lazy import inside WorkflowRunner.run()
+from agents.base import BaseAgent, AgentResult
+from contracts.eval_result import EvalResult
+from contracts.optim_report import OptimReport, RoundReport
+
+
+def _get_run_workflow():
+    """Lazy import to avoid circular dependency with orchestrator.runner."""
+    from orchestrator.runner import run_workflow
+    return run_workflow
 
 
 class WorkflowRunner:
@@ -51,6 +59,7 @@ class WorkflowRunner:
         
         Note: run_workflow generates its own workflow_id internally.
         """
+        run_workflow = _get_run_workflow()
         return run_workflow(
             task_description=task_prompt,
             max_iterations=max_iterations,
@@ -187,7 +196,7 @@ class SupervisorAgent(BaseAgent):
 
         # Create a minimal LLM client if not provided (for BaseAgent)
         if llm_client is None:
-            from src.gateway.llm_client import LLMClient
+            from gateway.llm_client import LLMClient
             llm_client = LLMClient()
         
         # Initialize BaseAgent with required args

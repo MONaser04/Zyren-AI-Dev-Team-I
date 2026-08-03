@@ -17,8 +17,8 @@ from typing import Any
 
 import yaml
 
-from src.orchestrator.runner import run_workflow
-from src.contracts.schemas import TaskAssignment, CodePatch, VerificationReport, ReviewDecision
+from orchestrator.runner import run_workflow
+from contracts.schemas import TaskAssignment, CodePatch, VerificationReport, ReviewDecision
 
 
 @dataclass

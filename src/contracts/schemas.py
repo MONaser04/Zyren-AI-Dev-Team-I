@@ -405,26 +405,156 @@ class RebuttalJudgment(BaseContract):
 
 
 # ============================================================
-# Phase 4: Semantic Router Contract
+# Phase 4: Semantic Router Contract — Multi-Department
 # ============================================================
 
 
+class TargetDomain(StrEnum):
+    """Primary routing domain for the multi-department intent classifier."""
+
+    SOFTWARE_ENGINEERING = "software_engineering"
+    DEEP_RESEARCH = "deep_research"
+    MEDIA_PRODUCTION = "media_production"
+
+
 class TaskComplexity(StrEnum):
-    """Task complexity classification for semantic routing."""
+    """Task complexity classification (Software Engineering sub-route)."""
 
     SIMPLE = "simple"       # Fast Lane: Coder + Critic only
     MEDIUM = "medium"       # Full SDLC (truncated)
     COMPLEX = "complex"     # Full SDLC (full roster)
 
 
-class RoutingDecision(BaseContract):
-    """Output of the Semantic Router."""
+class SWEComplexityDecision(BaseContract):
+    """Sub-routing decision for Software Engineering complexity.
+
+    Encapsulates the Fast Lane vs. Full SDLC classification that was
+    previously the sole purpose of the Semantic Router.
+    """
 
     complexity: TaskComplexity
     confidence: float           # 0.0–1.0
     safe_fallback: bool         # True if confidence < threshold → full pipeline
     reasoning: str
     fast_lane: bool             # convenience: complexity == SIMPLE and not safe_fallback
+
+
+class RoutingDecision(BaseContract):
+    """Output of the Multi-Department Semantic Router.
+
+    Carries the target domain and, when the domain is Software Engineering,
+    an optional nested SWE complexity sub-decision.
+    """
+
+    domain: TargetDomain
+    confidence: float           # 0.0–1.0 — domain classification confidence
+    safe_fallback: bool         # True if confidence < threshold → defaults to SE
+    reasoning: str
+    fast_lane: bool             # convenience: SE + SIMPLE + high confidence
+    swe_sub: SWEComplexityDecision | None = None  # populated only for SE domain
+
+
+# ============================================================
+# Deep Research Contract — ResearchReport
+# ============================================================
+
+
+class ResearchSource(BaseContract):
+    """A single verified source used in deep research."""
+
+    url: str = Field(
+        min_length=1,
+        description="Source URL.",
+    )
+    title: str = Field(
+        default="",
+        description="Page or document title.",
+    )
+    accessed_at: str = Field(
+        default="",
+        description="ISO-8601 timestamp when the source was accessed.",
+    )
+    reliability_score: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Estimated reliability of this source (0.0–1.0).",
+    )
+
+
+class ResearchDataPoint(BaseContract):
+    """A single research finding backed by evidence and confidence."""
+
+    claim: str = Field(
+        min_length=1,
+        description="The factual claim or data point.",
+    )
+    evidence: str = Field(
+        default="",
+        description="Supporting evidence or excerpt.",
+    )
+    confidence: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Confidence in this data point (0.0–1.0).",
+    )
+    source_urls: list[str] = Field(
+        default_factory=list,
+        description="URLs supporting this claim.",
+    )
+
+
+class ResearchReport(BaseContract):
+    """Output contract for the DeepResearchAgent.
+
+    Structured for secure commit to the append-only Event-Sourced State
+    log. Every finding carries provenance and a confidence score.
+    """
+
+    query: str = Field(
+        min_length=1,
+        description="Original research question or topic.",
+    )
+    summary: str = Field(
+        min_length=1,
+        description="Executive summary of findings.",
+    )
+    sources: list[ResearchSource] = Field(
+        default_factory=list,
+        description="All sources consulted during research.",
+    )
+    data_points: list[ResearchDataPoint] = Field(
+        default_factory=list,
+        description="Structured data points extracted from sources.",
+    )
+    key_findings: list[str] = Field(
+        default_factory=list,
+        description="Main conclusions and discoveries.",
+    )
+    methodology: str = Field(
+        default="",
+        description="Description of the research methodology.",
+    )
+    limitations: list[str] = Field(
+        default_factory=list,
+        description="Known gaps, biases, or caveats.",
+    )
+    overall_confidence: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Aggregate confidence in the report (0.0–1.0).",
+    )
+    recommendations: list[str] = Field(
+        default_factory=list,
+        description="Actionable next steps or conclusions.",
+    )
+
+    @classmethod
+    def from_stored(cls, data: dict) -> "ResearchReport":
+        """Create from stored dict (e.g., event payload)."""
+        return cls.model_validate(data)
 
 
 # ============================================================
@@ -645,3 +775,6 @@ class WorkflowState(BaseModel):
     integrator_output: dict[str, Any] | None = None
     docs_adr: dict[str, Any] | None = None
     docs_final: dict[str, Any] | None = None
+
+    # Deep Research domain output
+    deep_research_report: dict[str, Any] | None = None

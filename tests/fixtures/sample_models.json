@@ -1,0 +1,135 @@
+{
+  "nvidia_nim/deepseek-ai/deepseek-v4-pro": {
+    "id": "nvidia_nim/deepseek-ai/deepseek-v4-pro",
+    "provider": "nvidia_nim",
+    "context_window": 128000,
+    "modalities": ["text", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 8192,
+    "pricing": {
+      "input_per_1m_tokens": 0.0,
+      "output_per_1m_tokens": 0.0,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 60,
+      "tpm": 100000
+    },
+    "tier": "frontier"
+  },
+  "nvidia_nim/minimaxai/minimax-m3": {
+    "id": "nvidia_nim/minimaxai/minimax-m3",
+    "provider": "nvidia_nim",
+    "context_window": 32768,
+    "modalities": ["text", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 4096,
+    "pricing": {
+      "input_per_1m_tokens": 0.0,
+      "output_per_1m_tokens": 0.0,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 100,
+      "tpm": 200000
+    },
+    "tier": "fast"
+  },
+  "nvidia_nim/google/gemma-4-31b-it": {
+    "id": "nvidia_nim/google/gemma-4-31b-it",
+    "provider": "nvidia_nim",
+    "context_window": 8192,
+    "modalities": ["text", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 8192,
+    "pricing": {
+      "input_per_1m_tokens": 0.0,
+      "output_per_1m_tokens": 0.0,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 120,
+      "tpm": 150000
+    },
+    "tier": "critic"
+  },
+  "nvidia_nim/nvidia/nemotron-3-ultra": {
+    "id": "nvidia_nim/nvidia/nemotron-3-ultra",
+    "provider": "nvidia_nim",
+    "context_window": 4096,
+    "modalities": ["text", "function_calling"],
+    "function_calling": true,
+    "structured_output": false,
+    "max_output_tokens": 4096,
+    "pricing": {
+      "input_per_1m_tokens": 0.0,
+      "output_per_1m_tokens": 0.0,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 60,
+      "tpm": 100000
+    },
+    "tier": "frontier"
+  },
+  "gpt-4o": {
+    "id": "gpt-4o",
+    "provider": "openai",
+    "context_window": 128000,
+    "modalities": ["text", "vision", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 16384,
+    "pricing": {
+      "input_per_1m_tokens": 2.50,
+      "output_per_1m_tokens": 10.00,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 500,
+      "tpm": 30000
+    },
+    "tier": "frontier"
+  },
+  "gpt-4o-mini": {
+    "id": "gpt-4o-mini",
+    "provider": "openai",
+    "context_window": 128000,
+    "modalities": ["text", "vision", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 16384,
+    "pricing": {
+      "input_per_1m_tokens": 0.15,
+      "output_per_1m_tokens": 0.60,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 1000,
+      "tpm": 50000
+    },
+    "tier": "fast"
+  },
+  "claude-3-5-sonnet-20241022": {
+    "id": "claude-3-5-sonnet-20241022",
+    "provider": "anthropic",
+    "context_window": 200000,
+    "modalities": ["text", "vision", "function_calling", "structured_output"],
+    "function_calling": true,
+    "structured_output": true,
+    "max_output_tokens": 8192,
+    "pricing": {
+      "input_per_1m_tokens": 3.00,
+      "output_per_1m_tokens": 15.00,
+      "currency": "USD"
+    },
+    "limits": {
+      "rpm": 50,
+      "tpm": 20000
+    },
+    "tier": "critic"
+  }
+}

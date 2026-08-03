@@ -23,8 +23,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from src.contracts.eval_result import EvalIssue, EvalResult
-from src.gateway.llm_client import LLMClient as LiteLLMClient
+from contracts.eval_result import EvalIssue, EvalResult
+from gateway.llm_client import LLMClient as LiteLLMClient
 
 
 class RedTeamAttack:

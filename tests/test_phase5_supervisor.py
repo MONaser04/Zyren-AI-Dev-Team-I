@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.contracts.eval_result import EvalResult
-from src.contracts.optim_report import OptimReport, RoundReport
+from contracts.eval_result import EvalResult
+from contracts.optim_report import OptimReport, RoundReport
 from optim.convergence import ConvergenceConfig, check_convergence
 from optim.feedback_store import FeedbackStore, FeedbackRecord
 from optim.analyser import analyse_round

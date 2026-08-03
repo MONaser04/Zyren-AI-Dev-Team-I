@@ -8,12 +8,12 @@ On retry iterations, incorporates prior feedback from the Grounded Critic.
 
 from __future__ import annotations
 
-from src.observability.instrumentation import trace_agent_invocation
+from observability.instrumentation import trace_agent_invocation
 
 from typing import TYPE_CHECKING
 
-from src.agents.base import BaseAgent
-from src.contracts.schemas import (
+from agents.base import BaseAgent
+from contracts.schemas import (
     CodePatch,
     FileContent,
     RebuttalRequest,
@@ -71,6 +71,10 @@ class CoderAgent(BaseAgent):
         Returns:
             A CodePatch with the generated files.
         """
+        # LangGraph may pass states as dicts depending on channel definitions
+        if isinstance(task, dict):
+            task = TaskAssignment(**task)
+
         self.logger.info(
             "Generating code for task=%s, iteration=%d", task.task_id, task.iteration
         )

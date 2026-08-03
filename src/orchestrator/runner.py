@@ -17,20 +17,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.gateway.client import LiteLLMClient
-    from src.state.store import EventStore
-    from src.orchestrator.graph import GraphState
+    from gateway.client import LiteLLMClient
+    from state.store import EventStore
+    from orchestrator.graph import GraphState
 
-from src.orchestrator.convergence import create_convergence_manager, OrchestratorConvergence
-from src.orchestrator.artifacts import create_artifact_manager, ArtifactManager
-from src.orchestrator.hitl import create_hitl_manager, HITLManager, ApprovalStatus
+from orchestrator.convergence import create_convergence_manager, OrchestratorConvergence
+from orchestrator.artifacts import create_artifact_manager, ArtifactManager
+from orchestrator.hitl import create_hitl_manager, HITLManager, ApprovalStatus
 
 logger = logging.getLogger(__name__)
 
 
 def _get_graph_components():
     """Lazy import to avoid circular dependency with agents module."""
-    from src.orchestrator.graph import GraphState, build_feedback_loop
+    from orchestrator.graph import GraphState, build_feedback_loop
     return GraphState, build_feedback_loop
 
 
@@ -107,11 +107,11 @@ def run_workflow(
     """
     # Initialize dependencies
     if event_store is None:
-        from src.state.store import SQLiteEventStore
+        from state.store import SQLiteEventStore
         event_store = SQLiteEventStore(db_path=db_path or ":memory:")
 
     if llm_client is None:
-        from src.gateway.llm_client import LLMClient as LiteLLMClient
+        from gateway.llm_client import LLMClient as LiteLLMClient
         llm_client = LiteLLMClient()
 
     workflow_id = uuid.uuid4().hex[:16]
@@ -172,6 +172,7 @@ def run_workflow(
         "event_version": 0,
         "rebuttal_used": False,
         "fast_lane": True,
+        "domain": "software_engineering",
     }
 
     # Run the graph with Phase 5 hooks
@@ -205,6 +206,39 @@ def run_workflow(
         for f in code_patch["files"]:
             if isinstance(f, dict):
                 final_code[f.get("path", "unknown")] = f.get("content", "")
+
+    # Add deep research report if present
+    deep_research = final_state.get("deep_research_report")
+    if deep_research:
+        import json as _json
+        import csv
+        import io
+        
+        # 1. JSON Report
+        final_code["deep_research_report.json"] = _json.dumps(deep_research, indent=2, ensure_ascii=False, default=str)
+        
+        # 2. Markdown Summary
+        md = f"# Deep Research Report: {deep_research.get('query', '')}\n\n"
+        md += f"## Summary\n{deep_research.get('summary', '')}\n\n"
+        md += "## Key Findings\n"
+        for finding in deep_research.get("key_findings", []):
+            md += f"- {finding}\n"
+        md += f"\n## Overall Confidence: {deep_research.get('overall_confidence', 0.0):.2f}\n"
+        final_code["deep_research_report.md"] = md
+        
+        # 3. CSV / Excel-compatible Data Export
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        writer.writerow(["Claim", "Confidence", "Source URLs", "Evidence"])
+        for dp in deep_research.get("data_points", []):
+            urls = ", ".join(dp.get("source_urls", []))
+            writer.writerow([
+                dp.get("claim", ""),
+                dp.get("confidence", ""),
+                urls,
+                dp.get("evidence", "")
+            ])
+        final_code["deep_research_data.csv"] = csv_buffer.getvalue()
 
     success = final_state.get("verdict") == "PASS"
 
@@ -277,7 +311,11 @@ def _run_with_hooks(
 
     # For now, use standard invoke and add hooks via state inspection
     # A full implementation would use LangGraph's interrupt/checkpoint features
-    final_state = compiled.invoke(initial_state)
+    max_iter = initial_state.get("max_iterations", 5)
+    # Each iteration passes through ~8 nodes (coder→tester→hitl→critic→rebut→judge→increment)
+    # Plus initial nodes (assign_task, route). Add generous buffer.
+    recursion_limit = max(50, max_iter * 10 + 20)
+    final_state = compiled.invoke(initial_state, {"recursion_limit": recursion_limit})
 
     # Post-run: save final artifacts
     if artifact_mgr:

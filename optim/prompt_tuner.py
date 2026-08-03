@@ -16,9 +16,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from src.contracts.eval_result import EvalResult
-from src.contracts.optim_report import TuningResult
-from src.gateway.llm_client import LLMClient
+from contracts.eval_result import EvalResult
+from contracts.optim_report import TuningResult
+from gateway.llm_client import LLMClient
 from optim.feedback_store import FeedbackStore
 
 logger = logging.getLogger(__name__)

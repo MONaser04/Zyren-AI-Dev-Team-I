@@ -67,8 +67,15 @@ def setup_tracing(config: TracingConfig | None = None) -> None:
         config = _config_from_env()
     resource = Resource.create({"service.name": config.service_name})
     provider = TracerProvider(resource=resource)
-    exporter = OTLPSpanExporter(endpoint=f"{config.otlp_endpoint}/v1/traces")
-    provider.add_span_processor(BatchSpanProcessor(exporter))
+
+    # Only attach OTLP exporter if explicitly enabled via environment variable
+    if os.getenv("ENABLE_TRACING", "0") == "1":
+        try:
+            exporter = OTLPSpanExporter(endpoint=f"{config.otlp_endpoint}/v1/traces")
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+        except Exception:
+            pass
+
     trace.set_tracer_provider(provider)
     _initialized = True
 

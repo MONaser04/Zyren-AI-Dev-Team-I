@@ -50,3 +50,13 @@ htmlcov/
 *.log
 *.bak
 *.tmp
+
+# === AI Agents & Generated Files ===
+memory.json
+deep_research_data.csv
+deep_research_report.json
+deep_research_report.md
+artifacts/
+reports/
+*.db
+*.sqlite

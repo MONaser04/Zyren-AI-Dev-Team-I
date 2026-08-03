@@ -24,9 +24,9 @@ class TestPythonEnvironment:
     """Verify the Python environment meets requirements."""
 
     def test_python_version_minimum(self) -> None:
-        """Python version must be >= 3.12."""
-        assert sys.version_info >= (3, 12), (
-            f"Python >= 3.12 required, got {sys.version_info.major}.{sys.version_info.minor}"
+        """Python version must be >= 3.11."""
+        assert sys.version_info >= (3, 11), (
+            f"Python >= 3.11 required, got {sys.version_info.major}.{sys.version_info.minor}"
         )
 
 

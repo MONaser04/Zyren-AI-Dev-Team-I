@@ -11,7 +11,7 @@ src_path = PROJECT_ROOT / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from src.orchestrator.runner import run_workflow
+from orchestrator.runner import run_workflow
 
 # تأكد من وضع مفاتيح الـ API الخاصة بك في ملف .env
 # مثلاً: OPENAI_API_KEY أو أي موديل تستخدمه عبر LiteLLM
