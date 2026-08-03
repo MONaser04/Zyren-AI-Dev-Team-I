@@ -4,7 +4,7 @@
 
 > A self-hosted **multi-agent software-engineering system** (an "AI dev team") built around a **grounded feedback loop** — designed to be buildable **solo, part-time, over ~5–8 months**.
 
-![Status](https://img.shields.io/badge/status-Phase%206%20%C2%B7%20100%25%20complete-brightgreen)
+![Status](https://img.shields.io/badge/status-Phase%207%20%C2%B7%20In%20progress-yellow)
 ![Auto-Discovery](https://img.shields.io/badge/auto--discovery-10%2B%20providers-blue)
 ![Engine](https://img.shields.io/badge/engine-LangGraph-6f42c1)
 ![Gateway](https://img.shields.io/badge/gateway-LiteLLM%20Smart%20Gateway-0aa)
