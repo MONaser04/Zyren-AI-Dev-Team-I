@@ -204,7 +204,7 @@ sequenceDiagram
 | **4** | Observability + full roster + **Professional Researcher Integration** | ~5–6 wks | ✅ Done |
 | **5** | Resilience + human-in-the-loop + **Liaison Chat Interface** | ~5–6 wks | ✅ Done |
 | **6** | Evaluation + red-teaming | ~5–6 wks | ✅ Done |
-| **7** | Self-improvement (ongoing) | ongoing | ⬜ Not started |
+| **7** | Self-improvement (ongoing) | ongoing | 🟨 In progress |
 
 *Legend: ⬜ Not started · 🟨 In progress · ✅ Done. Tick the checkboxes in each phase as you build.*
 
@@ -344,7 +344,7 @@ sequenceDiagram
 ## 🚀 Phase 7 — Self-Improvement & Optional Hardening
 *Week 34+ · Ongoing*
 
-- [ ] **Automated Prompt Optimization:** use published tools — **DSPy** (Stanford) optimizers (MIPROv2) and/or **GEPA** (reflective Genetic-Pareto; `dspy.GEPA` or standalone `pip install gepa`), plus **TextGrad** for hard single-instance cases. Run **offline** on failure traces from your observability logs to rewrite underperforming prompts against your golden metric.
+- [x] **Automated Prompt Optimization:** use published tools — **DSPy** (Stanford) optimizers (MIPROv2) and/or **GEPA** (reflective Genetic-Pareto; `dspy.GEPA` or standalone `pip install gepa`), plus **TextGrad** for hard single-instance cases. Run **offline** on failure traces from your observability logs to rewrite underperforming prompts against your golden metric.
 - [ ] **Lightweight Governance (Single-User Appropriate):** keep the cheap, high-value practices — a **decision-provenance trace** on high-stakes decisions/overrides (inputs examined, policies checked, trade-offs weighed) logged into the event log; optional local **PII redaction** on inputs/outputs; **tag-based routing** in LiteLLM to keep sensitive prompts on local models only.
 - [ ] **Cost/Energy Accounting (Optional, Local):** you already log per-agent tokens via OpenTelemetry — optionally derive a simple per-workflow cost/energy estimate for your own dashboards.
 
