@@ -14,7 +14,7 @@
 
 > [!NOTE]
 > **Stack in one line:** Engine = **LangGraph** · Gateway = **LiteLLM** · **OpenClaw** = *optional conversational front-end*.
-> **Last updated:** 2026-07-24 · **Owner:** solo build with AI coding assistants.
+> **Last updated:** 2026-08-03 · **Owner:** solo build with AI coding assistants.
 
 ---
 
