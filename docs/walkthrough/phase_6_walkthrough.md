@@ -1,6 +1,6 @@
 # Phase 6 Walkthrough: Comprehensive Evaluation Framework
 
-A step-by-step guide to running and understanding the Phase 6 evaluation suite for Zyren AI Dev-Team.
+A step-by-step guide to running and understanding the Phase 6 evaluation suite for Ž Y R E N AI Dev-Team.
 
 ---
 

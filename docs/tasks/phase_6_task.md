@@ -1,7 +1,7 @@
 # Phase 6 Implementation Tasks
 
 ## Overview
-Comprehensive Evaluation Framework for Zyren AI Dev-Team — LLM-as-Judge calibration, trajectory-first evaluation, router anti-drift guardrail, adversarial red-teaming, unified orchestration, and CI/CD integration.
+Comprehensive Evaluation Framework for Ž Y R E N AI Dev-Team — LLM-as-Judge calibration, trajectory-first evaluation, router anti-drift guardrail, adversarial red-teaming, unified orchestration, and CI/CD integration.
 
 ---
 

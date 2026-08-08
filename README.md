@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# 🤖 Zyren: Autonomous AI Dev-Team
+# 🤖 Ž Y R E N: Autonomous AI Dev-Team
 
 ### The Autonomous Multi-Agent Software Engineering System
 
@@ -26,7 +26,7 @@
 
 ## 📖 Overview
 
-**Zyren AI Dev-Team** is an autonomous software engineering agency powered by a team of **17 specialized AI agents** coordinated through a **LangGraph star-topology state machine**. A central **Supervisor agent** dynamically routes tasks to the right specialist — planner, architect, coder, tester, critic, security auditor, researcher, and more — creating a complete software development lifecycle in a single command.
+**Ž Y R E N AI Dev-Team** is an autonomous software engineering agency powered by a team of **17 specialized AI agents** coordinated through a **LangGraph star-topology state machine**. A central **Supervisor agent** dynamically routes tasks to the right specialist — planner, architect, coder, tester, critic, security auditor, researcher, and more — creating a complete software development lifecycle in a single command.
 
 ### Core Design Principles
 
@@ -120,7 +120,7 @@ graph TD
 
 ### Orchestration: Supervisor Star Topology
 
-Unlike a static pipeline, Zyren AI Dev-Team uses a **dynamic star topology**: every specialist agent routes back to the Supervisor after completing its work. The Supervisor — powered by an LLM — analyzes the full execution history and decides the **next best agent** to call:
+Unlike a static pipeline, Ž Y R E N AI Dev-Team uses a **dynamic star topology**: every specialist agent routes back to the Supervisor after completing its work. The Supervisor — powered by an LLM — analyzes the full execution history and decides the **next best agent** to call:
 
 ```
 assign_task → Supervisor → [planner|architect|coder|tester|critic|...] → Supervisor → ... → complete

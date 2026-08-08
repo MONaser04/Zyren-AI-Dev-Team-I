@@ -1,6 +1,6 @@
 # Phase 5 Walkthrough: Closed-Loop Self-Improvement
 
-A step-by-step guide to running and understanding the Zyren AI Dev-Team Supervisor.
+A step-by-step guide to running and understanding the Ž Y R E N AI Dev-Team Supervisor.
 
 ---
 
@@ -22,7 +22,7 @@ python test_run_phase5.py --rounds 2
 
 Expected output:
 ```
-🤖  Zyren AI Dev-Team Supervisor — Phase 5
+🤖  Ž Y R E N AI Dev-Team Supervisor — Phase 5
     Closed-Loop Self-Improvement: Evaluate → Analyse → Tune → Converge
 ======================================================================
 Config file : config/phase5.yaml
@@ -214,7 +214,7 @@ Complete machine-readable session data:
 Human-readable summary with tables:
 
 ```markdown
-# 🔄 Zyren AI Dev-Team — Optimisation Report
+# 🔄 Ž Y R E N AI Dev-Team — Optimisation Report
 
 **Session ID**: `supervisor-abc123`
 **Status**: `converged`
