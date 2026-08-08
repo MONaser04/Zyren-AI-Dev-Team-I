@@ -275,8 +275,8 @@ Each adapter implements the `ProviderAdapter` interface and registers with the `
 
 ```bash
 # Clone the repository
-git clone https://github.com/zyren04/zyren-ai-dev-team.git
-cd zyren-ai-dev-team
+git clone https://github.com/zyren04/Autonomous-AI-Dev-Team.git
+cd Autonomous-AI-Dev-Team
 
 # Install dependencies
 uv sync
