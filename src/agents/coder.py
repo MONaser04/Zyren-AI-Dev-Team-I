@@ -39,6 +39,8 @@ Rules:
 3. Follow the language's idiomatic style and best practices.
 4. If tests are expected, include them in a separate test file.
 5. Respond ONLY with the structured JSON output — no prose before or after.
+6. If the task requires modifying an existing file (like JSON, text, config, or existing code), output the FULL modified content of THAT file directly in your response. Do NOT write a separate script to modify it unless explicitly asked to do so.
+7. ANTI-HALLUCINATION (CRITICAL): If the task asks to "undo", "recover", or "restore" a deleted file, you MUST NOT recreate or rewrite it from scratch using your imagination. You do not have an undo tool. You must refuse the request or output an empty patch. NEVER write fake replacement code to pretend you successfully recovered a file.
 
 If you receive feedback from a prior iteration, carefully address every
 issue raised. Do NOT repeat the same mistakes.
@@ -88,7 +90,7 @@ class CoderAgent(BaseAgent):
 
         # Use structured output to guarantee contract compliance
         result = self.llm_client.complete_structured(
-            model=self.model,
+            complexity="complex",
             messages=messages,
             response_model=_CoderResponse,
         )
@@ -141,7 +143,7 @@ class CoderAgent(BaseAgent):
         ]
 
         result = self.llm_client.complete_structured(
-            model=self.model,
+            complexity="complex",
             messages=messages,
             response_model=_RebuttalResponse,
         )

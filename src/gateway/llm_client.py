@@ -24,22 +24,23 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
-def _run_sync(coro: Any) -> Any:
-    """Run an async coroutine synchronously from a synchronous function.
+import threading
 
-    Handles running inside or outside an existing event loop thread.
+_shared_loop = asyncio.new_event_loop()
+def _run_shared_loop():
+    asyncio.set_event_loop(_shared_loop)
+    _shared_loop.run_forever()
+
+_shared_thread = threading.Thread(target=_run_shared_loop, daemon=True)
+_shared_thread.start()
+
+def _run_sync(coro):
     """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, coro)
-            return future.result()
-    else:
-        return asyncio.run(coro)
+    Safely runs an async coroutine synchronously.
+    Uses a dedicated background event loop to prevent LiteLLM global queue crashes.
+    """
+    future = asyncio.run_coroutine_threadsafe(coro, _shared_loop)
+    return future.result()
 
 
 class LLMClient:
@@ -82,21 +83,16 @@ class LLMClient:
         return model_or_alias
 
     def route_by_complexity(self, complexity: str) -> str:
-        """Route by complexity tier — delegates to gateway's router."""
-        from gateway.model_registry import ModelTier
-
-        tier_map = {
-            "simple": ModelTier.FAST,
-            "complex": ModelTier.FRONTIER,
-            "critic": ModelTier.CRITIC,
-            "code": ModelTier.CODE_SPECIALIZED,
-        }
-        tier = tier_map.get(complexity, ModelTier.FAST)
-        active = self._gateway._registry.get_active_models()
-        tier_models = [m for m in active if m.tier == tier]
-        if tier_models:
-            return tier_models[0].model_id
-        return "openai/gpt-4o-mini"
+        """Route dynamically based on capabilities and cost using SmartRouter."""
+        from gateway.smart_gateway import RoutingCriteria
+        
+        criteria = RoutingCriteria(complexity=complexity)
+        try:
+            decision = self._gateway._router.find_optimal_model(criteria)
+            return decision.primary_model.model_id
+        except Exception as e:
+            logger.warning("Routing failed for complexity %s: %s", complexity, e)
+            return "openai/gpt-4o-mini"
 
     # ----------------------------------------------------------
     # Public API — complete_text / complete_structured
@@ -104,8 +100,8 @@ class LLMClient:
 
     async def async_complete_text(
         self,
-        model: str,
         messages: list[dict[str, str]],
+        model: str = "",
         temperature: float = 0.0,
         max_tokens: int = 4096,
         workflow_id: str = "",
@@ -125,8 +121,8 @@ class LLMClient:
     @trace_chat("frontier")
     def complete_text(
         self,
-        model: str,
         messages: list[dict[str, str]],
+        model: str = "",
         temperature: float = 0.0,
         max_tokens: int = 4096,
         workflow_id: str = "",
@@ -146,9 +142,9 @@ class LLMClient:
 
     async def async_complete_structured(
         self,
-        model: str,
         messages: list[dict[str, str]],
         response_model: type[T],
+        model: str = "",
         temperature: float = 0.0,
         max_tokens: int = 4096,
         workflow_id: str = "",
@@ -168,9 +164,9 @@ class LLMClient:
     @trace_chat("frontier")
     def complete_structured(
         self,
-        model: str,
         messages: list[dict[str, str]],
         response_model: type[T],
+        model: str = "",
         temperature: float = 0.0,
         max_tokens: int = 4096,
         workflow_id: str = "",

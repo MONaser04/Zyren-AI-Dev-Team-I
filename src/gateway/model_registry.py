@@ -7,8 +7,10 @@ and classification. All provider adapters plug into this registry.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
+from pathlib import Path
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -95,6 +97,7 @@ class ModelCapabilities:
     structured_output: bool = False
     parallel_tool_calls: bool = False
     max_output_tokens: int = 4096
+    parameter_size_b: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +110,11 @@ class ModelPricing:
     citation: SourceCitation | None = None
     effective_date: datetime | None = None
 
+    def __post_init__(self) -> None:
+        """Force pricing to 0.0 per user request until manual update is needed."""
+        object.__setattr__(self, "input_per_1m_tokens", 0.0)
+        object.__setattr__(self, "output_per_1m_tokens", 0.0)
+
 
 @dataclass(frozen=True, slots=True)
 class ModelLimits:
@@ -115,6 +123,160 @@ class ModelLimits:
     rpm: int | None = None
     tpm: int | None = None
     rpd: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class BenchmarkScores:
+    """Real benchmark-based quality scores for a model.
+
+    Sourced from Chatbot Arena ELO, Artificial Analysis Intelligence Index,
+    and official model cards — NOT from keyword matching on model names.
+    """
+
+    coding_score: float | None = None       # HumanEval / SWE-bench normalized 0–1
+    reasoning_score: float | None = None    # GPQA / AIME normalized 0–1
+    general_score: float | None = None      # MMLU-Pro / Arena-Hard normalized 0–1
+    elo_rating: int | None = None           # Chatbot Arena ELO
+    recommended_tier: str = "fast"   # Benchmark-recommended tier
+    family: str = "unknown"          # Model family for diversity enforcement
+
+
+class BenchmarkRegistry:
+    """Loads and queries benchmark scores from model_benchmarks.json.
+
+    This replaces keyword-based tier classification with real benchmark data.
+    For unknown models, it falls back to parameter-size estimation from the name.
+    """
+
+    _instance: BenchmarkRegistry | None = None
+    _data: dict | None = None
+    _local_cache: dict | None = None
+
+    def __init__(self) -> None:
+        if BenchmarkRegistry._data is None:
+            self._load()
+
+    @classmethod
+    def _load(cls) -> None:
+        benchmarks_path = Path(__file__).parent / "model_benchmarks.json"
+        try:
+            with open(benchmarks_path, encoding="utf-8") as f:
+                cls._data = json.load(f)
+            logger.info("Loaded benchmark scores from %s", benchmarks_path)
+        except FileNotFoundError:
+            logger.warning("model_benchmarks.json not found at %s, using defaults", benchmarks_path)
+            cls._data = {"models": {}, "default_by_param_size": {}, "param_size_keywords": {}}
+
+    def get_scores(self, model_id: str) -> BenchmarkScores:
+        """Look up benchmark scores for a model.
+
+        Tries exact match first, then strips provider prefix,
+        then falls back to parameter-size estimation.
+        """
+        models = self._data.get("models", {})
+
+        # Try exact match
+        if model_id in models:
+            return self._parse_scores(model_id, models[model_id])
+
+        # Strip provider prefix (e.g., "nvidia_nim/meta/llama-3.1-8b" -> "meta/llama-3.1-8b")
+        parts = model_id.split("/", 1)
+        if len(parts) > 1:
+            stripped = parts[1]
+            if stripped in models:
+                return self._parse_scores(model_id, models[stripped])
+
+        # Try matching just the last part (e.g., "meta/llama-3.1-8b-instruct")
+        for key, data in models.items():
+            # Check if model_id ends with the key or key ends with model_id
+            if model_id.endswith(key.split("/")[-1]) or key.endswith(model_id.split("/")[-1]):
+                return self._parse_scores(model_id, data)
+
+        # Fallback: estimate from parameter size keywords in model name
+        return self._estimate_from_name(model_id)
+
+    def get_family(self, model_id: str) -> str:
+        """Get the model family for diversity enforcement."""
+        scores = self.get_scores(model_id)
+        if scores.family != "unknown":
+            return scores.family
+        # Fallback: extract family from model name
+        families = ["nemotron", "llama", "gpt", "claude", "gemini", "gemma",
+                    "mistral", "mixtral", "qwen", "phi", "deepseek", "command"]
+        name_lower = model_id.lower()
+        for fam in families:
+            if fam in name_lower:
+                return fam
+        parts = model_id.split("/")
+        return parts[-1].split("-")[0] if parts else "unknown"
+
+    def classify_tier(self, model_id: str) -> ModelTier:
+        """Classify model tier based on benchmark scores, NOT keywords."""
+        scores = self.get_scores(model_id)
+        tier_str = scores.recommended_tier
+        tier_map = {
+            "fast": ModelTier.FAST,
+            "frontier": ModelTier.FRONTIER,
+            "critic": ModelTier.CRITIC,
+            "code_specialized": ModelTier.CODE_SPECIALIZED,
+            "long_context": ModelTier.LONG_CONTEXT,
+            "vision": ModelTier.VISION,
+        }
+        return tier_map.get(tier_str, ModelTier.FAST)
+
+    def _estimate_from_name(self, model_id: str) -> BenchmarkScores:
+        """Estimate benchmark scores from parameter-size keywords in model name."""
+        name_lower = model_id.lower()
+        param_keywords = self._data.get("param_size_keywords", {})
+        defaults = self._data.get("default_by_param_size", {})
+
+        # Check each size bucket
+        for size_bucket in ["xlarge", "large", "medium", "small", "tiny"]:
+            keywords = param_keywords.get(size_bucket, [])
+            if isinstance(keywords, list) and any(kw in name_lower for kw in keywords):
+                bucket_data = defaults.get(size_bucket, {})
+                if bucket_data and not isinstance(bucket_data, str):
+                    family = self._extract_family(model_id)
+                    return BenchmarkScores(
+                        coding_score=bucket_data.get("coding_score", 0.5),
+                        reasoning_score=bucket_data.get("reasoning_score", 0.5),
+                        general_score=bucket_data.get("general_score", 0.5),
+                        elo_rating=bucket_data.get("elo_rating", 1000),
+                        recommended_tier=bucket_data.get("recommended_tier", "fast"),
+                        family=family,
+                    )
+
+        # Ultimate fallback: treat as small/fast
+        family = self._extract_family(model_id)
+        return BenchmarkScores(
+            coding_score=0.40,
+            reasoning_score=0.35,
+            general_score=0.45,
+            elo_rating=1020,
+            recommended_tier="fast",
+            family=family,
+        )
+
+    def _extract_family(self, model_id: str) -> str:
+        """Extract family name from model ID."""
+        families = ["nemotron", "llama", "gpt", "claude", "gemini", "gemma",
+                    "mistral", "mixtral", "qwen", "phi", "deepseek", "command"]
+        name_lower = model_id.lower()
+        for fam in families:
+            if fam in name_lower:
+                return fam
+        parts = model_id.split("/")
+        return parts[-1].split("-")[0] if parts else "unknown"
+
+    def _parse_scores(self, model_id: str, data: dict) -> BenchmarkScores:
+        return BenchmarkScores(
+            coding_score=data.get("coding_score"),
+            reasoning_score=data.get("reasoning_score"),
+            general_score=data.get("general_score"),
+            elo_rating=data.get("elo_rating"),
+            recommended_tier=data.get("recommended_tier", "fast"),
+            family=data.get("family", "unknown"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +310,9 @@ class ModelSpec:
     # Classification
     tags: list[str] = field(default_factory=list)
     description: str = ""
+
+    # Benchmark scores (populated from model_benchmarks.json)
+    benchmark_scores: BenchmarkScores | None = None
 
 
 # ============================================================
@@ -288,6 +453,9 @@ class AutoModelRegistry:
                 logger.info("Discovering models from %s...", provider_name)
                 models = await adapter.discover_models()
                 for spec in models:
+                    name_lower = spec.model_id.lower()
+                    if any(x in name_lower for x in ["safety", "guard", "moderation", "filter"]):
+                        continue
                     await self._register_model(spec, adapter)
                 total += len(models)
                 logger.info("Discovered %d models from %s", len(models), provider_name)
@@ -297,13 +465,20 @@ class AutoModelRegistry:
         return total
 
     async def _register_model(self, spec: ModelSpec, adapter: ProviderAdapter) -> None:
-        """Register a model, enriching with pricing/limits if needed."""
+        """Register a model, enriching with pricing/limits and benchmark scores."""
+        # Load benchmark scores for this model
+        bench_reg = BenchmarkRegistry()
+        scores = bench_reg.get_scores(spec.model_id)
+
+        # Override provider's keyword-based tier with benchmark-recommended tier
+        benchmark_tier = bench_reg.classify_tier(spec.model_id)
+
         # Convert to dict for modification (dataclass doesn't have __dict__)
         spec_dict = {
             "model_id": spec.model_id,
             "provider": spec.provider,
             "display_name": spec.display_name,
-            "tier": spec.tier,
+            "tier": benchmark_tier,  # Use benchmark-based tier instead of keyword-based
             "capabilities": spec.capabilities,
             "pricing": spec.pricing,
             "limits": spec.limits,
@@ -315,6 +490,7 @@ class AutoModelRegistry:
             "verification_confidence": spec.verification_confidence,
             "tags": spec.tags,
             "description": spec.description,
+            "benchmark_scores": scores,
         }
 
         # Enrich with pricing if not present
@@ -329,8 +505,8 @@ class AutoModelRegistry:
             if limits:
                 spec_dict["limits"] = limits
 
-        # Auto-classify tier if not set
-        if spec_dict["tier"] == ModelTier.FAST and spec_dict["capabilities"].context_window > 100000:
+        # Override: if context window is huge, prefer long_context tier
+        if spec_dict["capabilities"].context_window > 100000 and benchmark_tier == ModelTier.FAST:
             spec_dict["tier"] = ModelTier.LONG_CONTEXT
 
         # Create new spec with enriched data
@@ -338,7 +514,13 @@ class AutoModelRegistry:
 
         # Store
         self._models[enriched_spec.model_id] = enriched_spec
-        logger.debug("Registered model: %s", enriched_spec.model_id)
+        logger.debug(
+            "Registered model: %s (tier=%s, elo=%d, family=%s)",
+            enriched_spec.model_id,
+            enriched_spec.tier.value,
+            scores.elo_rating,
+            scores.family,
+        )
 
     def get_model(self, model_id: str) -> ModelSpec | None:
         """Get a model by ID."""
@@ -574,10 +756,10 @@ def get_registry() -> AutoModelRegistry:
 
         if os.environ.get("GEMINI_API_KEY"):
             _global_registry.manual_add_model(ModelSpec(
-                model_id="google/gemini-2.5-flash",
+                model_id="google/gemini-3.5-flash-lite",
                 provider="google",
-                display_name="Gemini 2.5 Flash",
-                tier=ModelTier.FRONTIER,
+                display_name="Gemini 3.5 Flash Lite",
+                tier=ModelTier.FAST,
                 capabilities=ModelCapabilities(1000000, ["text", "vision"], True, True, True, 8192),
                 pricing=ModelPricing(0.0, 0.0, "USD"),
                 limits=ModelLimits()
@@ -588,7 +770,7 @@ def get_registry() -> AutoModelRegistry:
                 model_id="anthropic/claude-3-haiku",
                 provider="anthropic",
                 display_name="Claude 3 Haiku",
-                tier=ModelTier.CRITIC,
+                tier=ModelTier.FAST,
                 capabilities=ModelCapabilities(128000, ["text", "vision"], True, True, True, 4096),
                 pricing=ModelPricing(0.25, 1.25, "USD"),
                 limits=ModelLimits()

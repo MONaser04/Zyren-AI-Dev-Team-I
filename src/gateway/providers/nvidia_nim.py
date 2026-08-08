@@ -112,6 +112,20 @@ class NVIDIAProviderAdapter(ProviderAdapter):
         # NVIDIA NIM models typically have these fields
         context_window = model_data.get("max_context_length", 4096)
         owned_by = model_data.get("owned_by", "nvidia")
+        
+        # Attempt to read official parameter size from API metadata (if provided)
+        parameter_size_b = None
+        metadata = model_data.get("metadata", {})
+        if "parameter_count" in metadata:
+            try:
+                parameter_size_b = float(metadata["parameter_count"])
+            except (ValueError, TypeError):
+                pass
+        elif "parameters" in model_data:
+            try:
+                parameter_size_b = float(model_data["parameters"])
+            except (ValueError, TypeError):
+                pass
 
         # Determine tier based on model name and capabilities
         tier = self._classify_tier(model_id, context_window)
@@ -124,6 +138,7 @@ class NVIDIAProviderAdapter(ProviderAdapter):
             structured_output=True,
             parallel_tool_calls=True,
             max_output_tokens=min(8192, context_window // 4),
+            parameter_size_b=parameter_size_b,
         )
 
         # Default pricing (NVIDIA NIM is often free tier)

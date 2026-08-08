@@ -107,6 +107,18 @@ class PolicyEngine:
                 "max_daily_calls": 150,
                 "requires_approval": [],
             },
+            "explorer": {
+                "allowed_tools": [
+                    "read_file", "file_list", "file_read",
+                ],
+                "allowed_permissions": [
+                    "filesystem.read",
+                ],
+                "denied_tools": ["write_file", "exec_command", "git_commit", "db_query"],
+                "denied_permissions": ["filesystem.write", "shell.execute_sandboxed"],
+                "max_daily_calls": 500,
+                "requires_approval": [],
+            },
             "researcher": {
                 "allowed_tools": ["web_search", "read_file"],
                 "allowed_permissions": ["web.search", "filesystem.read"],
@@ -149,6 +161,14 @@ class PolicyEngine:
                 "denied_tools": [],
                 "denied_permissions": [],
                 "max_daily_calls": 10,
+                "requires_approval": [],
+            },
+            "operator": {
+                "allowed_tools": ["*"],
+                "allowed_permissions": ["*"],
+                "denied_tools": [],
+                "denied_permissions": [],
+                "max_daily_calls": 50,
                 "requires_approval": [],
             },
         },

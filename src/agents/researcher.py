@@ -40,7 +40,7 @@ class ResearcherAgent(BaseAgent):
         return self.llm_client.complete_structured(
             messages=[{"role": "user", "content": prompt}],
             response_model=ResearchNotes,
-            model=self.model,
+            complexity="complex",
             temperature=0.2,
         )
 

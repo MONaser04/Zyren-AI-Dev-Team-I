@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from agents.supervisor import SupervisorAgent, SupervisorConfig, run_supervisor
+from agents.optimizator import SupervisorAgent, SupervisorConfig, run_supervisor
 from orchestrator.runner import run_workflow, run_evaluation_batch, WorkflowResult
 from contracts.eval_result import EvalResult
 from optim.feedback_store import FeedbackStore, get_feedback_store

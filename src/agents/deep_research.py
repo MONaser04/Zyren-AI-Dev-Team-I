@@ -128,7 +128,7 @@ class DeepResearchAgent(BaseAgent):
 
         result = self.llm_client.complete_text(
             messages=[{"role": "user", "content": prompt}],
-            model=self.model,
+            complexity="complex",
             temperature=0.3,
             max_tokens=512,
             workflow_id="",
@@ -215,7 +215,7 @@ class DeepResearchAgent(BaseAgent):
         )
         raw = self.llm_client.complete_text(
             messages=[{"role": "user", "content": prompt}],
-            model=self.model,
+            complexity="complex",
             temperature=0.2,
             max_tokens=1024,
             workflow_id=workflow_id,
@@ -301,7 +301,7 @@ class DeepResearchAgent(BaseAgent):
         report = self.llm_client.complete_structured(
             messages=[{"role": "user", "content": prompt}],
             response_model=ResearchReport,
-            model=self.model,
+            complexity="complex",
             temperature=0.1,
             max_tokens=4096,
             workflow_id=workflow_id,

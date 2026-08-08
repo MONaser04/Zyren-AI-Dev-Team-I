@@ -1,573 +1,646 @@
 <a id="top"></a>
 
-# 🤖 AI Dev-Team — A Multi-Agent SDLC Engine
+<div align="center">
 
-> A self-hosted **multi-agent software-engineering system** (an "AI dev team") built around a **grounded feedback loop** — designed to be buildable **solo, part-time, over ~5–8 months**.
+# 🤖 AI Dev-Team
 
-![Status](https://img.shields.io/badge/status-Phase%207%20%C2%B7%20In%20progress-yellow)
-![Auto-Discovery](https://img.shields.io/badge/auto--discovery-10%2B%20providers-blue)
-![Engine](https://img.shields.io/badge/engine-LangGraph-6f42c1)
-![Gateway](https://img.shields.io/badge/gateway-LiteLLM%20Smart%20Gateway-0aa)
-![North Star](https://img.shields.io/badge/north--star-SWE--bench-orange)
-![Mode](https://img.shields.io/badge/mode-solo%20build-lightgrey)
-![License](https://img.shields.io/badge/license-MIT-green)
+### The Autonomous Multi-Agent Software Engineering System
 
-> [!NOTE]
-> **Stack in one line:** Engine = **LangGraph** · Gateway = **LiteLLM** · **OpenClaw** = *optional conversational front-end*.
-> **Last updated:** 2026-08-03 · **Owner:** solo build with AI coding assistants.
+**Provider-Agnostic · Grounded Verification · Self-Improving**
 
----
+[![Status](https://img.shields.io/badge/status-Active%20Development-yellow)](#-current-project-status)
+[![Agents](https://img.shields.io/badge/agents-17%20specialized%20roles-6f42c1)](#-agent-roster--17-specialized-roles)
+[![Providers](https://img.shields.io/badge/providers-10%2B%20auto--discovery-blue)](#-provider-adapters--auto-discovery)
+[![Engine](https://img.shields.io/badge/engine-LangGraph%20Star%20Topology-0d1117)](#-orchestration-engine)
+[![Lines](https://img.shields.io/badge/source-19%2C597%20lines%20%C2%B7%20100%20files-informational)](#-repository-structure)
+[![Tests](https://img.shields.io/badge/tests-29%20suites%20%C2%B7%20zero%20API%20calls-brightgreen)](#-testing--evaluation)
+[![License](https://img.shields.io/badge/license-MIT-green)](#-license)
 
-<a id="toc"></a>
-## 📑 Table of Contents
+> A self-hosted, research-grounded **multi-agent SDLC engine** that takes a coding task and returns **runnable, test-passing code** — with full traces, hard cost caps, sandboxed execution, Bayesian model routing, and a human break-glass protocol.
 
-1. [Overview](#overview)
-2. [System Architecture](#architecture)
-3. [The Grounded Feedback Loop](#feedback-loop)
-4. [Guiding Principles & North-Star](#principles)
-5. [Roadmap at a Glance](#roadmap)
-6. [How to Use This Roadmap](#how-to-use)
-7. [Phase 0 — Foundation & Environment](#phase-0)
-8. [Phase 1 — State, Contracts & Minimal Loop](#phase-1)
-9. [Phase 2 — Grounded Verification Layer](#phase-2)
-10. [Phase 3 — Gateway, Tools & Memory](#phase-3)
-11. [Phase 4 — Observability & Full Roster](#phase-4)
-12. [Phase 5 — Resilience & Human-in-the-Loop](#phase-5)
-13. [Phase 6 — Evaluation & Adversarial Testing](#phase-6)
-14. [Phase 7 — Self-Improvement & Hardening](#phase-7)
-15. [Agent Roster](#roster)
-16. [Non-Goals & Future Milestones](#out-of-scope)
-17. [Proposed Repository Structure](#repo-structure)
-18. [Definition of Done](#definition-of-done)
-19. [Glossary](#glossary)
-20. [Research Basis & Sources](#sources)
-21. [License](#license)
+[Overview](#-overview) · [Architecture](#-system-architecture) · [Agents](#-agent-roster--17-specialized-roles) · [Gateway](#-smart-gateway--model-routing) · [Quick Start](#-quick-start) · [Roadmap](#-roadmap)
 
 ---
 
-<a id="overview"></a>
+</div>
+
 ## 📖 Overview
 
-**What:** an autonomous "AI software team" that takes a well-specified coding task and returns runnable, test-passing code — with full traces, hard cost caps, sandboxed execution, and a human break-glass.
+**AI Dev-Team** is an autonomous software engineering agency powered by a team of **17 specialized AI agents** coordinated through a **LangGraph star-topology state machine**. A central **Supervisor agent** dynamically routes tasks to the right specialist — planner, architect, coder, tester, critic, security auditor, researcher, and more — creating a complete software development lifecycle in a single command.
 
-**Core idea:** verification is **tools-first** — real tests, type-checkers, linters, and execution provide the signal; the LLM only *interprets* it. This is grounded in a peer-reviewed MIT Press / TACL survey finding that LLMs **do not reliably self-correct from their own internal feedback**; reliable gains appear with **external, verifiable feedback**.
+### Core Design Principles
 
-**How:** a lean team of **~14 role agents** coordinated by a **LangGraph** state machine, talking to models through a **LiteLLM** gateway, persisting to an **event-sourced state log**, and observable end-to-end via **OpenTelemetry**.
-
-| | |
+| Principle | Implementation |
 |---|---|
-| **Engine** | LangGraph (stateful graph, checkpointer, native human-in-the-loop) |
-| **Model Gateway** | LiteLLM Smart Gateway (auto-routing, fallback chains, hard cost caps) |
-| **Model Registry** | AutoModelRegistry (auto-discovery 10+ providers, verified ground truth) |
-| **State** | Event-sourced append-only log + optimistic locking (Postgres/SQLite) |
-| **Contracts** | Pydantic schemas at every agent boundary |
-| **Tools** | Model Context Protocol (MCP) registry, default-deny permissions |
-| **Sandbox** | Docker (hardened) → gVisor → Firecracker / E2B by threat model |
-| **Memory** | mem0 / LangMem (episodic + semantic), grow only by need |
-| **Observability** | OpenTelemetry GenAI semantic conventions → Langfuse / Phoenix |
-| **Evaluation** | DeepEval / promptfoo · SWE-bench Verified + Lite as north-star |
-| **Self-Improvement** | DSPy / GEPA offline prompt optimization |
-| **Research** | ProfessionalResearcherAgent (verified sources only + citations) |
-| **Human Interface** | LiaisonAgent (natural language → system action) |
-| **Front-end** | OpenClaw (optional channel layer) |
-
-[↑ Back to top](#top)
+| **Verification is tools-first** | Real tests, type-checkers, linters, and execution provide the signal — the LLM only *interprets* it. Based on [MIT Press/TACL findings](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00713/125177/) that LLMs cannot reliably self-correct from internal feedback alone. |
+| **Provider-agnostic routing** | The `SmartRouter` sees only `ModelSpec` objects with capabilities, pricing, and limits. It knows nothing about OpenAI vs. Anthropic. Provider is strictly metadata. |
+| **Verified ground truth** | The Data Layer (Registry, Gateway, Adapters) **never guesses**. Every model spec has a `SourceCitation` with URL, confidence score, and access timestamp. |
+| **Zero API calls in tests** | All 29 test suites run fully offline with `MockGateway`, `MockProviderAPIs`, and `MockEventStore`. |
+| **Circuit breakers everywhere** | Per-model, per-provider, per-workflow budget caps with automatic fallback chains, health monitoring, and rate limiting. |
 
 ---
 
-<a id="architecture"></a>
 ## 🏛️ System Architecture
 
 ```mermaid
 graph TD
-    H["Human Operator"]
-    OC["OpenClaw<br/>optional front-end"]
+    H["👤 Human Operator"]
 
-    subgraph CORE["Orchestration Core"]
-        LIA["Liaison<br/>HITL interface"]
-        ORC["Orchestrator<br/>semantic router + state machine"]
+    subgraph ENTRY["Entry Layer"]
+        CLI["main.py<br/>CLI + Interactive Loop"]
+        VOICE["🎤 Voice Agent<br/>Google Gemini Live API"]
     end
 
-    subgraph AGENTS["Role Agents — lean, ~16"]
-        PLAN["Product Analyst · Planner · Architect"]
-        BUILD["Coder · ProfessionalResearcher · UX · DB"]
-        VERIFY["Tester → Grounded Critic → Integrator"]
-        GOV["Security · Supervisor · Docs"]
+    subgraph ROUTING["Intent Classification"]
+        LIA["Liaison Agent<br/>Pure passthrough"]
+        SR["Semantic Router<br/>6-domain classifier"]
+    end
+
+    subgraph CORE["Orchestration Core — Star Topology"]
+        SUP["⭐ Supervisor Agent<br/>LLM-driven dynamic router"]
+    end
+
+    subgraph AGENTS["Specialist Agents"]
+        PA["Product Analyst"]
+        PL["Planner"]
+        AR["Architect ⭐"]
+        UX["UX Designer 🔀"]
+        DB["DB Engineer 🔀"]
+        COD["Coder ⭐"]
+        TST["Tester"]
+        CRT["Grounded Critic"]
+        SEC["Security ⭐"]
+        RES["Researcher ⚡"]
+        INT["Integrator"]
+        DOC["Documentation 📍"]
+    end
+
+    subgraph RESEARCH["Research Layer"]
+        DR["Deep Research Agent<br/>Open web + MCP tools"]
+        PR["Professional Researcher<br/>Zero-LLM-knowledge"]
+        EXP["Project Explorer<br/>Codebase analysis"]
     end
 
     subgraph INFRA["Shared Infrastructure"]
-        GW["LiteLLM Smart Gateway<br/>auto-routing · fallback · cost caps"]
-        REG["AutoModelRegistry<br/>auto-discovery · verified ground truth"]
-        BB["Event-Sourced State<br/>append-only log + optimistic lock"]
-        TOOLS["MCP Tools + Sandbox<br/>Docker / gVisor / E2B"]
-        OTEL["OpenTelemetry<br/>observability"]
-        PROV["Provider Adapters<br/>OpenAI · Anthropic · Google · NVIDIA · Azure · AWS · Ollama · Together · Fireworks · Groq"]
-        RES["ProfessionalResearcher<br/>Official Docs Fetchers"]
+        GW["SmartGateway<br/>6-factor routing · Bayesian · fallback"]
+        REG["AutoModelRegistry<br/>10 Provider Adapters · 100+ models"]
+        BAY["Bayesian Tracker<br/>Thompson Sampling"]
+        CAL["Calibration Engine<br/>Offline LLM-as-Judge"]
+        BB["Event Store<br/>SQLite/Postgres · optimistic lock"]
+        TOOLS["MCP Tools + Sandbox<br/>Docker / gVisor · default-deny"]
+        MEM["Memory Layer<br/>Episodic (Qdrant) + Semantic"]
+        COST["Cost Tracker<br/>Per-workflow budget caps"]
+        OTEL["OpenTelemetry<br/>Jaeger + Langfuse"]
+        RES_LAYER["Resilience Layer<br/>Circuit Breakers · Rate Limiter<br/>Fallback Chains · Health Monitor"]
     end
 
-    H <--> LIA
-    OC -.-> ORC
-    LIA <--> ORC
-    ORC --> PLAN
-    PLAN --> BUILD
-    BUILD --> VERIFY
-    VERIFY --> GOV
-    VERIFY -->|block + feedback| BUILD
-    GOV -.->|escalate| LIA
+    H --> CLI
+    H --> VOICE
+    CLI --> LIA
+    LIA --> SR
+    SR -->|software_engineering| SUP
+    SR -->|deep_research| DR
+    SR -->|exploration| EXP
+
+    SUP -->|dynamic dispatch| PA & PL & AR & UX & DB & COD & TST & CRT & SEC & RES & INT & DOC
+    PA & PL & AR & UX & DB & COD & TST & CRT & SEC & RES & INT & DOC -->|return to| SUP
+
     AGENTS --> GW
-    AGENTS <--> BB
-    BUILD --> TOOLS
-    AGENTS -.->|traces| OTEL
     GW --> REG
-    GW --> PROV
-    REG --> RES
-    REG --> GW
+    GW --> BAY
+    GW --> RES_LAYER
+    GW --> COST
+    REG --> CAL
+    AGENTS <--> BB
+    AGENTS --> TOOLS
+    AGENTS -.->|traces| OTEL
+    AGENTS <--> MEM
+    PR -.->|cross-validate| REG
 ```
 
-> [!IMPORTANT]
-> The **Event-Sourced State log** is the backbone: every mutation is an immutable event, so any run is replayable and any crash is recoverable. The **feedback edge** (`Verify → block + feedback → Build`) is the heart of the system — detailed below.
+### Orchestration: Supervisor Star Topology
 
-[↑ Back to top](#top)
+Unlike a static pipeline, AI Dev-Team uses a **dynamic star topology**: every specialist agent routes back to the Supervisor after completing its work. The Supervisor — powered by an LLM — analyzes the full execution history and decides the **next best agent** to call:
+
+```
+assign_task → Supervisor → [planner|architect|coder|tester|critic|...] → Supervisor → ... → complete
+```
+
+This allows the system to:
+- Skip unnecessary stages for simple tasks
+- Loop coder → tester → critic until tests pass
+- Dynamically add security reviews or docs only when needed
+- Terminate gracefully or escalate on failure
 
 ---
 
-<a id="feedback-loop"></a>
 ## 🔁 The Grounded Feedback Loop
 
-The core cycle. The **first critic is a set of tools**, not an LLM — the LLM critic only interprets verifiable results.
+The core validation cycle. The **first critic is a set of tools**, not an LLM.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant O as Orchestrator
+    participant S as Supervisor
     participant C as Coder
     participant T as Tester
     participant K as Grounded Critic
-    participant S as Supervisor
     participant H as Human
 
-    O->>C: task + typed contract (Pydantic)
+    S->>C: task + Pydantic contract
     loop until PASS or iteration cap
-        C->>T: submit patch
-        Note over T: run tests · types · lint<br/>(external, verifiable signals)
-        T->>K: VerificationReport (facts only)
-        alt report clean AND rubric pass
-            K-->>O: PASS → Integrator / merge
+        C->>T: submit CodePatch
+        Note over T: pytest · mypy · ruff · bandit<br/>(facts only — no opinions)
+        T->>K: VerificationReport
+        alt all signals clean
+            K-->>S: PASS → next phase
         else issues found
-            K->>C: BLOCK + structured feedback<br/>(escalating tone: soft → firm → hard)
-            opt Coder disagrees
-                C->>K: rebuttal ×1 (justification)
+            K->>C: BLOCK + structured feedback<br/>(escalation: soft → firm → hard)
+            opt Coder disagrees (1× per iter)
+                C->>K: RebuttalRequest
+                K->>K: judge rebuttal
+                alt accepted
+                    K-->>S: PASS (rebuttal upheld)
+                else rejected
+                    K->>C: iterate with feedback
+                end
             end
         end
     end
     alt deadlock after cap
-        K->>S: escalate (Level 2)
-        S->>S: judge · capped attempts
-        alt still unresolved
-            S->>H: Break-Glass (durable interrupt)
-            H-->>O: fix in place + resume trigger
-        end
+        K->>S: escalate
+        S->>H: Break-Glass (durable interrupt)
+        H-->>S: fix in place + resume
     end
 ```
 
-[↑ Back to top](#top)
+**Key features:**
+- **Escalation ladder**: Soft (iter 1) → Firm (iter 2) → Hard block (iter 3) → Escalate to Supervisor
+- **Right of rebuttal**: Coder can dispute a BLOCK once per iteration with evidence
+- **Cross-model diversity**: Critic runs on a different model family than the Coder to reduce shared blind spots
+- **Dedicated critics**: Only the three highest-risk roles (Coder, Architect, Security) get dedicated critics
 
 ---
 
-<a id="principles"></a>
-## 🧭 Guiding Principles & North-Star
+## 🤖 Agent Roster — 17 Specialized Roles
 
-> [!IMPORTANT]
-> 1. **Start simple, add complexity only when measured** *(Anthropic — Building Effective Agents)*. Every agent and layer must earn its place.
-> 2. **Multi-agent costs more tokens & latency than single-agent** *(Anthropic; ChatDev)* — so extra agents must pay for themselves in quality.
-> 3. **Verification is tools-first** *(MIT Press / TACL self-correction survey)* — external signals lead; the LLM only interprets.
-> 4. **North-Star benchmark:** **SWE-bench Verified (500) + Lite (300) % Resolved**, tracked from day one. Also maintain 10–20 personal "golden tasks".
-> 5. **The hard rule:** after every phase, re-run the harness. If a component doesn't measurably improve resolve-rate (or cost/latency at equal quality) — **cut it**.
-> 6. **Verified Ground Truth for Data Layer | Full LLM Reasoning for Reasoning Layer** — Data Layer (ModelRegistry, SmartGateway, ProviderAdapters, CostTracker, ConfigManager) **never guesses**; every field has a verified source + citation. Reasoning Layer (Coder, Architect, Critic, Planner, Researcher, Tester, Liaison) **never stops reasoning**; full LLM reasoning for all decisions.
-> 7. **Auto-Discovery Default + Manual Override Via Liaison Chat** — System starts in **Auto Mode**: discovers, validates, registers models from official sources. User says: *"Add gpt-4o-mini from Azure eastus2 and make it the default for simple tasks"* → System executes end-to-end. No code changes, no config file edits, no restarts.
-> 8. **Zero Real API Calls in Tests** — All tests use `MockGateway`, `MockProviderAPIs`, `MockEventStore`. CI/CD runs completely offline.
-> 9. **Circuit Breakers Everywhere** — Per-model, per-provider, per-workflow budget caps. Automatic fallback chains with cooldown. Health monitoring with alerting.
+| # | Agent | Module | Responsibility | Notes |
+|:---:|---|---|---|---|
+| 1 | **Supervisor** | `supervisor.py` | Dynamic LLM-driven routing hub | ⭐ Central node |
+| 2 | **Product Analyst** | `product_analyst.py` | Prompt → PRD, user stories, acceptance criteria | |
+| 3 | **Planner** | `planner.py` | PRD → task DAG, dependencies, assignments | |
+| 4 | **Architect** | `architect.py` | System design, ADRs, tech choices | ⭐ Dedicated critic |
+| 5 | **UX/UI Designer** | `ux.py` | Design system, accessibility | 🔀 Conditional |
+| 6 | **DB Engineer** | `db_engineer.py` | Schema design, migrations | 🔀 Conditional |
+| 7 | **Coder** | `coder.py` | Core code producer (frontier model) | ⭐ Dedicated critic |
+| 8 | **Tester** | `tester.py` | Runs pytest · mypy · ruff → facts only | External signals |
+| 9 | **Grounded Critic** | `critic.py` | Interprets VerificationReport + rubric | Cross-model |
+| 10 | **Integrator** | `integrator.py` | Fan-in merge + rollback on failure | |
+| 11 | **Security** | `security.py` | OWASP-aligned review + SAST | ⭐ Dedicated critic |
+| 12 | **Documentation** | `docs.py` | ADRs (post-arch) + final docs (post-integration) | 📍 Milestone-based |
+| 13 | **Liaison** | `liaison.py` | Natural language → system action passthrough | 👤 Human interface |
+| 14 | **Researcher** | `researcher.py` | On-demand knowledge gaps during SDLC | ⚡ On-demand |
+| 15 | **Professional Researcher** | `professional_researcher.py` | Zero-LLM-knowledge, verified sources only | 🔬 11 doc fetchers |
+| 16 | **Deep Research** | `deep_research.py` | Open web research, data aggregation | 🌐 MCP tools |
+| 17 | **Project Explorer** | `explorer.py` | Codebase analysis via file_list / file_read | 🔍 Read-only |
 
-[↑ Back to top](#top)
-
----
-
-<a id="roadmap"></a>
-## 🗺️ Roadmap at a Glance
-
-| Phase | Focus | Est. Effort | Status |
-|:---:|---|:---:|:---:|
-| **0** | Foundation + local environment + **Critical Fixes** | ~1 week | ✅ Done |
-| **1** | State + contracts + minimal loop + **Auto-Discovery Registry Core** | ~4–6 wks | ✅ Done |
-| **2** | Grounded verification layer + **Professional Researcher Agent** | ~3–4 wks | ✅ Done |
-| **3** | Gateway + tools + memory + **Smart Gateway + Provider Adapters** | ~5–6 wks | ✅ Done |
-| **4** | Observability + full roster + **Professional Researcher Integration** | ~5–6 wks | ✅ Done |
-| **5** | Resilience + human-in-the-loop + **Liaison Chat Interface** | ~5–6 wks | ✅ Done |
-| **6** | Evaluation + red-teaming | ~5–6 wks | ✅ Done |
-| **7** | Self-improvement (ongoing) | ongoing | 🟨 In progress |
-
-*Legend: ⬜ Not started · 🟨 In progress · ✅ Done. Tick the checkboxes in each phase as you build.*
-
-[↑ Back to top](#top)
+**Additional operational agents:**
+- **Operator** (`operator.py`) — System administration (add/disable/enable models, set defaults)
+- **Voice Agent** (`voice_agent.py`) — Real-time voice interaction via Google Gemini Live API with screen sharing
+- **Optimizator** (`optimizator.py`) — Closed-loop self-improvement (eval → analysis → prompt tuning → re-eval)
 
 ---
 
-<a id="how-to-use"></a>
-## 📌 How to Use This Roadmap
+## 🔌 Smart Gateway & Model Routing
 
-> [!CAUTION]
-> **The hard rule:** after **every** phase, re-run the SWE-bench Lite + golden-task harness. If a new component doesn't measurably improve % Resolved (or improve cost/latency at equal quality), **cut it**.
+### Architecture
 
-- Treat each `- [ ]` as a real deliverable — tick it only when it's tested and traced.
-- Update the **Status** column in [Roadmap at a Glance](#roadmap) as you progress (⬜ → 🟨 → ✅).
-- Don't skip ahead: Phases 0–2 are the spine. If the minimal loop in Phase 1 doesn't beat a single-shot baseline, **stop and fix it** before Phase 3+.
+All LLM calls flow through a single entry point: **`SmartGateway`** (735 lines). No direct `litellm` calls anywhere else.
 
-[↑ Back to top](#top)
-
----
-
-<a id="phase-0"></a>
-## 🛠️ Phase 0 — Foundation Decision & Local Dev Environment
-*Week 0–1*
-
-- [x] **Engine Choice:** build the orchestration engine on **LangGraph** — the 2026 best fit for long-running, stateful, audit-heavy workflows with built-in checkpointing and human-in-the-loop. **OpenClaw** is kept as an optional conversational front-end.
-- [x] **Repository & Reproducibility:** single Python monorepo (`uv`/`poetry`), pinned dependencies, `Makefile` targets, and a `docker-compose.yml` for local infra (Postgres + vector store + LiteLLM + an OTLP backend). Everything runs on one workstation; no cloud required for v1.
-- [x] **Golden Task Set (Day-One Eval Harness):** wire up **SWE-bench Lite** as the smoke test and pick **10–20 personal golden tasks** *before writing any agent*. Never add a component without re-running this harness to prove it helped.
-- [x] **Fix Circular Imports (3 files):** `src/orchestrator/runner.py` (lazy import `GraphState, build_feedback_loop`), `src/agents/supervisor.py` (lazy import `run_workflow`), `src/agents/__init__.py` (lazy import `SupervisorAgent` via `__getattr__`).
-- [x] **Unify Model Mapping (3 sources):** `config/litellm.yaml` (add OpenAI, Anthropic, Google, Azure entries), `src/gateway/llm_client.py` (match litellm.yaml + support all providers), `tests/test_phase3_gateway.py` (update assertions for unified model map).
-- [x] **Build Mock Test Infrastructure (New Files):** `tests/conftest.py`, `tests/mocks/mock_gateway.py`, `tests/mocks/mock_models.py`, `tests/mocks/mock_provider_apis.py`, `tests/mocks/mock_event_store.py`, `tests/mocks/mock_researcher.py`, `tests/fixtures/sample_models.json`, `tests/fixtures/sample_pricing.json`, `tests/fixtures/golden_tasks.yaml`. All 411 tests pass with **zero real API calls**.
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-1"></a>
-## 🧱 Phase 1 — Core State, Contracts & the Minimal Feedback Loop
-*Week 1–6*
-
-- [x] **Event-Sourced State Store (Append-Only Log):** workflow state as an append-only event log in Postgres (SQLite for v0). Each mutation is immutable; current state is a projection → perfect replay/debugging. Start on LangGraph's built-in checkpointer, then add the event table underneath.
-- [x] **Minimal Event Schema:** every event carries `{event_id, workflow_id, agent_id, event_type, payload, version, timestamp, causation_id, correlation_id}`. `version` enables **optimistic locking** (conditional writes); `correlation_id`/`causation_id` reconstruct the execution graph and detect loops. Keep it small; add fields only on real need.
-- [x] **Type-Safe Inter-Agent Contracts (Pydantic):** every boundary is a strict schema (`PRD`, `ArchitectDesign`, `CodePatch`, `ReviewReport`). Validate **before** committing to the log; on failure, return the error to the **sender** for one self-correction instead of passing malformed data downstream. *(Optionally align naming with A2A v1.0 for cheap future interop — a full A2A server is not needed for a single-framework solo system.)*
-- [x] **The Minimal Viable Loop (Orchestrator + Coder + Tester + Grounded Critic):** ship the smallest end-to-end loop that produces working code — the **evaluator-optimizer** pattern. Coder generates a patch → Tester runs tests/types/lint → Grounded Critic reads those real signals + a rubric → pass or structured feedback → loop with a hard cap. **If this loop doesn't beat a single-shot baseline on your golden set, fix it before building anything else.**
-- [x] **Auto-Discovery Model Registry Core:** `src/gateway/model_registry.py` — `AutoModelRegistry` with `ModelSpec`, `SourceCitation`, `ModelCapabilities`, `ModelPricing`, `ModelLimits`, `ModelStatus` enums. Provider Adapters for 10+ providers (OpenAI, Anthropic, Google, NVIDIA NIM, Azure, AWS Bedrock, Ollama, Together, Fireworks, Groq). Auto-discovery with scheduled refresh, manual override via Liaison, cross-validation with Professional Researcher.
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-2"></a>
-## 🛡️ Phase 2 — Grounded Verification Layer *(The Heart of the System)*
-*Week 6–10*
-
-- [x] **Why "Grounded" (Research Basis):** the MIT Press / TACL survey shows LLMs do **not** reliably self-correct from internally-generated feedback. Therefore verification is **tools-first**: execution results, unit tests, type checks, static analysis, and diffs are the primary signal; the LLM only interprets and prioritizes them.
-- [x] **Tester Agent (External Signal Generator):** writes and runs tests in a sandbox, runs type-checker + linter, captures real stdout/stderr/exit codes. Emits a structured `VerificationReport` (failing tests, coverage delta, type errors, lint violations). **No opinions — only measured facts.**
-- [x] **Grounded Critic / Reviewer (Interpreter, Cross-Model):** consumes the `VerificationReport` + diff + rubric, decides pass/block with justification. Built on a **different model family** than the Coder to reduce shared blind spots and sycophancy. Uses an **escalation ladder** of tone: soft (iter 1) → firm (iter 2) → hard block (iter 3) → escalate to Supervisor.
-- [x] **Agentic Pushback (Right of Rebuttal):** the Coder may reject feedback **once per iteration** with a logical justification (*"the failing test asserts wrong behavior; here's the spec"*). If accepted, code passes; if deadlock persists, escalate. Prevents valid code being degraded by false positives and avoids infinite meta-critic layers.
-- [x] **Dedicated Critics (High-Risk Roles Only):** attach dedicated critics **only** to the three highest-risk producers — **Coder, Architect, Security**. All other outputs are verified by the shared Grounded Verification Layer. Promote a role to its own dedicated critic later *only if the benchmark proves it needs one*.
-- [x] **Professional Researcher Agent (Verified Ground Truth):** `src/agents/professional_researcher.py` — **ProfessionalResearcherAgent** with zero LLM knowledge, zero guessing. Every piece of data = official source + timestamp + confidence. Provider-specific Doc Fetchers: OpenAI (platform.openai.com), Anthropic (docs.anthropic.com), Google (Vertex AI), NVIDIA (build.nvidia.com), Azure (learn.microsoft.com), AWS (aws.amazon.com/bedrock), Ollama (ollama.com/library). Research Tasks: `research_model_spec`, `research_provider_pricing`, `research_provider_capabilities`, `cross_validate`, `fetch_official_docs`. Source Citation Structure: `source_type` (api/official_docs/pricing_page/model_card/changelog), `url`, `provider`, `accessed_at`, `field_mapping`, `confidence` (API=1.0, pricing_page=0.9, docs=0.85), `raw_snippet`. LLM Tools for Reasoning Layer: `fetch_official_page`, `call_provider_api`, `parse_pricing_table`, `validate_model_card`.
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-3"></a>
-## 🔌 Phase 3 — Model Gateway, Tools & Memory
-*Week 10–16*
-
-- [x] **LLMOps Gateway (LiteLLM, Self-Hosted):** route every model call through a self-hosted LiteLLM proxy as one OpenAI-compatible endpoint. Off the shelf: model pinning, complexity-based routing (cheap model for simple steps, frontier for hard ones), fallback chains + cooldowns on 429/5xx, and **hard per-workflow cost caps**.
-- [x] **Cost & Iteration Circuit Breakers:** global budget + iteration ceilings per workflow. On breach → halt, block further calls, alert the human. Combined with LiteLLM caps, cost becomes fully predictable.
-- [x] **Decoupled Tool Registry (MCP + Default-Deny):** expose tools via **MCP** (Linux Foundation standard). Enforce a **default-deny, role-scoped** permission matrix (e.g., Coder may read files and run `git`, but is barred from destructive DB ops or prod deploys). Load only needed tool schemas (Tool-RAG) to keep context small.
-- [x] **Secure Execution Sandbox (Hardened by Threat Model):** all agent-generated code runs isolated. Start with hardened **Docker** (network off, all caps dropped, read-only FS) or **gVisor** for syscall-level isolation; move to **Firecracker microVMs / E2B** for untrusted or prompt-injected code. **Never execute agent code on the host.**
-- [x] **Hierarchical Memory (Start Small, Grow by Need):** add layers only when the benchmark demands:
-  1. **Working memory** — the running context window.
-  2. **Episodic memory** — past runs/failures in a vector store; retrieve by similarity. Use **mem0** or **LangMem** (native to LangGraph).
-  3. **Semantic memory** — consolidated project facts/conventions (*"Postgres is mandated"*).
-  4. **Procedural memory** *(later)* — reusable runbooks/skill snippets.
-  5. **Shared graph memory** *(only if entity-heavy)* — a Neo4j/Graphiti layer; adopt only when simpler stores prove insufficient.
-- [x] **Smart Gateway + Auto Router + Resilience Layer:** `src/gateway/smart_gateway.py` — **SmartGateway** (THE ONLY GATEWAY, no direct litellm calls). `src/gateway/smart_router.py` — **SmartRouter** with decision factors: Task Complexity, Required Capabilities, Cost Budget, Performance History, Availability, USER PREFERENCE (Manual Override via Liaison). `src/gateway/resilience.py` — Per-model Circuit Breakers, Fallback Chains with cooldown, Rate limit tracking per provider/model, Health monitoring with alerting. `src/gateway/llm_client.py` — Updated to use SmartGateway, removed direct litellm calls, unified DEFAULT_MODEL_MAP with litellm.yaml.
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-4"></a>
-## 📊 Phase 4 — Observability & the Full Agent Roster
-*Week 16–22*
-
-- [x] **Observability (OpenTelemetry GenAI Conventions):** instrument with the OTel **GenAI semantic conventions** from the start (a 2026 standard emitted by LangChain/CrewAI/AutoGen). Emit `invoke_agent → chat → execute_tool` spans with `gen_ai.*` attributes (model, in/out tokens, finish reason) and metrics (`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`). Prompt-content capture **off by default** (privacy). View traces in **Langfuse/Phoenix** or any OTLP backend. Exposes silent failures, loops, and cost hotspots.
-- [x] **Dynamic Routing Orchestrator (Decoupled):**
-  1. a fast **Semantic Router** on a small model classifies task complexity with **confidence-aware routing** — below threshold it falls back to the safe full pipeline;
-  2. a deterministic **State Machine** (LangGraph) executes. Simple tasks take a **Fast Lane** (Coder + Grounded Critic); complex tasks take the full SDLC path.
-- [x] **Concurrency (DAG Fan-out / Fan-in):** independent agents (Architect, UX, Security research) run in parallel; outputs converge (Fan-in) at the Integrator. Concurrent writes to the state log are made safe by optimistic locking. LangGraph does this natively.
-- [x] **Milestone-Based Documentation:** the Docs agent runs **twice**, not every step — post-architecture (ADRs) and post-integration (READMEs, OpenAPI/Swagger, inline docs) from the final verified output only.
-
-> [!NOTE]
-> **DevOps/SRE** and **Multi-tenancy** roles are addressed in [Non-Goals & Future Milestones](#out-of-scope).
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-5"></a>
-## 🧑‍💻 Phase 5 — Resilience, Human-in-the-Loop & Pre-Execution Safety
-*Week 22–28*
-
-- [x] **Resilience & Self-Healing:**
-  1. **Retry with exponential backoff + jitter** for transient/429 errors (avoids retry storms).
-  2. **Bulkhead isolation** — each agent in its own async task / sandbox so one crash can't freeze the pipeline.
-  3. **Graceful degradation** — classify agents as hard-blocking (Coder, Tester, Grounded Critic) vs soft-optional (UX, Docs); bypass a failed soft-optional agent with a default + warning instead of halting.
-  4. **State re-hydration** — on crash, respawn the node and restore from the latest event-log checkpoint (free, because state is event-sourced).
-- [x] **Stateful Human Escalation (Break-Glass Protocol):** on escalation, pause via a durable interrupt (LangGraph HITL) and emit a **Conflict Handoff Report**. The human edits in place and fires a deterministic **resume trigger**. The resumed state passes back through the Grounded Verification Layer; a failed human edit yields a **Validation Warning** (not a loop) — the human fixes it or **Force Overrides** (their edit becomes ground truth). All overrides logged immutably.
-- [x] **Human Cognitive-Load Management:** batch low-risk approvals into one surface; prioritize alerts by severity; queue non-critical interrupts past a daily attention budget. Big quality-of-life win for a solo operator who *is* the human-in-the-loop.
-- [x] **Pre-Execution Simulation (Dry-Run):**
-  1. intercept tool calls and mock external mutations in a dry-run sandbox (zero side effects);
-  2. estimate token budget + latency from historical averages;
-  3. *(stretch)* score trajectory confidence over the planned DAG and block low-confidence runs.
-
-[↑ Back to top](#top)
-
----
-
-<a id="phase-6"></a>
-## ⚖️ Phase 6 — Evaluation, LLM-as-Judge & Adversarial Testing
-*Week 28–34*
-
-- [x] **Golden Dataset & Calibrated LLM-as-Judge:** hand-craft a small calibration set (20–50), then calibrate an LLM-as-Judge against your labels until agreement is solid (**Cohen's κ > 0.6**). Use single clear pass/fail rubrics and **low-precision scoring** (binary or 3-point) to cut variance; treat candidate outputs as **untrusted input** (injection-safe prompts); randomize order in pairwise comparisons to reduce position bias. Use **DeepEval** or **promptfoo**.
-- [x] **Trajectory-First Evaluation:** primary metric = end-to-end task success (does the software run and pass tests?) → **SWE-bench Verified/Lite % Resolved** + golden tasks. Drill into per-agent evals only on a system-level regression (**error-driven evaluation**).
-- [x] **Router Evals & Anti-Drift Guardrail:** periodically shadow-sample a small % of traffic vs a frontier model as ground truth. Enforce an **Immutable Performance Floor** — any auto-tuned routing threshold must first pass a static, human-verified anchor set, and auto-rolls back if win-rate drops below a hard bar. Prevents silent quality decay from cost optimization. **Evaluates existing 4-alias routing (frontier/fast/critic/fallback) + SemanticRouter** — does not change routing architecture.
-- [x] **Adversarial Red-Teaming (Off-the-Shelf, Periodic):** run **PyRIT** (Microsoft) and **garak** (NVIDIA) campaigns against the **OWASP Top 10 for Agentic Applications (2026)** — indirect prompt injection, tool-use privilege escalation, goal hijacking, multi-turn jailbreaks. Verify deterministic safe refusals. Periodic CI.
-
-[↑ Back to top](#top)
-
-
-<a id="phase-7"></a>
-## 🚀 Phase 7 — Self-Improvement & Optional Hardening
-*Week 34+ · Ongoing*
-
-- [x] **Automated Prompt Optimization:** use published tools — **DSPy** (Stanford) optimizers (MIPROv2) and/or **GEPA** (reflective Genetic-Pareto; `dspy.GEPA` or standalone `pip install gepa`), plus **TextGrad** for hard single-instance cases. Run **offline** on failure traces from your observability logs to rewrite underperforming prompts against your golden metric.
-- [ ] **Lightweight Governance (Single-User Appropriate):** keep the cheap, high-value practices — a **decision-provenance trace** on high-stakes decisions/overrides (inputs examined, policies checked, trade-offs weighed) logged into the event log; optional local **PII redaction** on inputs/outputs; **tag-based routing** in LiteLLM to keep sensitive prompts on local models only.
-- [ ] **Cost/Energy Accounting (Optional, Local):** you already log per-agent tokens via OpenTelemetry — optionally derive a simple per-workflow cost/energy estimate for your own dashboards.
-
-[↑ Back to top](#top)
-
----
-
-<a id="roster"></a>
-## 🤖 Agent Roster — Lean 14 *(Several Conditional / On-Demand)*
-
-| # | Role | Responsibility | Notes |
-|:---:|---|---|---|
-| 1 | **Orchestrator** | Router + deterministic state machine | Core |
-| 2 | **Product Analyst** | Prompt → PRD, user stories, acceptance criteria | |
-| 3 | **Project / Planner** | PRD + design → task DAG, dependencies, assignment | |
-| 4 | **Architect** | System design, ADRs | ⭐ Dedicated critic |
-| 5 | **UX/UI Designer** | Design system, accessibility, visual validation | 🔀 Conditional (frontend only) |
-| 6 | **Data / DB Engineer** | Schema, migrations, data layer | 🔀 Conditional (persistence only) |
-| 7 | **Researcher** | Fills a specific knowledge gap | ⚡ On-demand |
-| 8 | **Engineer / Coder** | Core code producer | ⭐ Dedicated critic |
-| 9 | **Tester** | Runs tests, types, lint, execution → facts | External-signal generator |
-| 10 | **Integrator / Reviewer** | Safe Fan-in merge + rollback on failure | |
-| 11 | **Security / SecOps** | OWASP-aligned review + SAST | ⭐ Dedicated critic |
-| 12 | **Documentation** | ADRs + final docs | 📍 Milestone-based |
-| 13 | **Liaison** | The **only** human interface; translates state ⇄ operator | |
-| 14 | **Supervisor** | Escalation tie-breaker (stronger model); capped attempts → Break-Glass | |
-
-*⭐ dedicated critic · 🔀 conditional · ⚡ on-demand · 📍 milestone-based. All other outputs are checked by the shared Grounded Verification Layer.*
-
-[↑ Back to top](#top)
-
----
-
-<a id="out-of-scope"></a>
-## 🚫 Non-Goals & Future Milestones *(post-v1)*
-
-> [!NOTE]
-> These are intentionally out of scope for v1 because each requires a team + real infra + real users. Each lists the **trigger** that would justify building it later.
-
-| Item | Why it's post-v1 | Build When |
-|---|---|---|
-| **Multi-tenancy & SaaS isolation** (RLS, per-tenant keys, microVM-per-tenant) | No value with a single user | Onboarding paying external customers |
-| **Federated multi-region + Raft + geo-sharding** | Heavy distributed-systems ops; unneeded on one workstation | Real cross-region data-residency at scale |
-| **Carbon-aware / Green-AI multi-region routing** | Requires a multi-region deployment | Running a multi-region 24/7 prod fleet |
-| **Enterprise compliance certification** (SOC2 / HIPAA / EU AI Act) | Org-level legal programs, not code | Selling to regulated enterprises |
-| **Crypto-shredding for GDPR erasure** (per-user DEKs + KMS) | Only matters with multi-user PII at scale | Multi-user production |
-| **SPIFFE cryptographic agent identities** | Role-scoped tool permissions suffice for a single-process system | Agents spanning untrusted hosts/orgs |
-
-[↑ Back to top](#top)
-
----
-
-<a id="repo-structure"></a>
-## 📂 Proposed Repository Structure
-
-```text
-ai-dev-team/
-├── README.md
-├── pyproject.toml            # uv/poetry, pinned deps
-├── Makefile                  # run · test · eval · up · down
-├── docker-compose.yml        # Postgres · vector store · LiteLLM · OTLP backend
-├── .env.example
-├── config/
-│   ├── litellm.yaml          # model registry, routing, fallbacks, cost caps
-│   ├── agents/               # per-agent prompt + contract + permissions
-│   └── policies.yaml         # tool permission matrix (default-deny)
-├── src/
-│   ├── orchestrator/         # semantic router + LangGraph state machine
-│   │   ├── semantic_router.py
-│   │   ├── graph.py
-│   │   ├── runner.py
-│   │   └── command_executor.py
-│   ├── agents/               # role agents (coder, tester, critic, ...)
-│   │   ├── coder.py
-│   │   ├── tester.py
-│   │   ├── critic.py
-│   │   ├── professional_researcher.py
-│   │   ├── researcher_docs/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py
-│   │   │   ├── openai_docs.py
-│   │   │   ├── anthropic_docs.py
-│   │   │   ├── google_docs.py
-│   │   │   ├── nvidia_docs.py
-│   │   │   ├── azure_docs.py
-│   │   │   ├── aws_docs.py
-│   │   │   └── ollama_docs.py
-│   │   └── liaison.py
-│   ├── contracts/            # Pydantic schemas (PRD, CodePatch, ReviewReport)
-│   ├── state/                # event store, projections, optimistic locking
-│   ├── memory/               # episodic/semantic (mem0 / LangMem adapters)
-│   ├── tools/                # MCP registry + sandbox runners
-│   ├── verification/         # tester runners + grounded critic
-│   ├── resilience/           # retries, bulkheads, checkpointing, HITL
-│   ├── observability/        # OpenTelemetry setup, spans, metrics
-│   └── gateway/              # SmartGateway + Provider Adapters
-│       ├── smart_gateway.py
-│       ├── smart_router.py
-│       ├── resilience.py
-│       ├── model_registry.py
-│       ├── llm_client.py
-│       └── providers/
-│           ├── __init__.py
-│           ├── base.py
-│           ├── openai_adapter.py
-│           ├── anthropic_adapter.py
-│           ├── google_adapter.py
-│           ├── nvidia_nim_adapter.py
-│           ├── azure_adapter.py
-│           ├── aws_bedrock_adapter.py
-│           ├── ollama_adapter.py
-│           ├── together_adapter.py
-│           ├── fireworks_adapter.py
-│           └── groq_adapter.py
-├── evals/
-│   ├── golden/               # 10–20 personal golden tasks
-│   ├── swebench/             # SWE-bench Lite harness
-│   ├── judges/               # calibrated LLM-as-judge rubrics
-│   └── redteam/              # PyRIT / garak campaigns
-├── optim/                    # DSPy / GEPA offline prompt optimization
-│   ├── analyser.py
-│   ├── convergence.py
-│   ├── feedback_store.py
-│   ├── model_optimiser.py
-│   ├── prompt_tuner.py
-│   └── reporter.py
-├── tests/
-│   ├── conftest.py
-│   ├── mocks/
-│   │   ├── __init__.py
-│   │   ├── mock_gateway.py
-│   │   ├── mock_models.py
-│   │   ├── mock_provider_apis.py
-│   │   ├── mock_event_store.py
-│   │   └── mock_researcher.py
-│   └── fixtures/
-│       ├── sample_models.json
-│       ├── sample_pricing.json
-│       └── golden_tasks.yaml
-└── docs/
-    ├── Improvements/
-    │   ├── MASTER_EXECUTION_PLAN.md
-    │   └── ARCHITECTURE_DECISIONS.md
-    ├── phases/
-    ├── tasks/
-    └── walkthrough/
+```
+Agent → LLMClient → SmartGateway → SmartRouter → litellm → Provider API
+                         │
+                         ├── 6-Factor Routing Decision
+                         ├── Bayesian Thompson Sampling
+                         ├── Circuit Breakers (per-model)
+                         ├── Fallback Chains (with cooldown)
+                         ├── Rate Limiting (per-provider)
+                         ├── Health Monitoring
+                         └── Cost Tracking (per-workflow caps)
 ```
 
-[↑ Back to top](#top)
+### 6-Factor Routing
+
+The `SmartRouter` considers:
+
+1. **Task Complexity** — simple / medium / complex
+2. **Required Capabilities** — vision, function calling, structured output, context length
+3. **Cost Budget** — per-workflow USD caps, enforced by `CostTracker`
+4. **Performance History** — Bayesian Beta Distribution (Thompson Sampling)
+5. **Availability** — circuit breaker state, rate limit headroom
+6. **Manual Override** — user preferences via Liaison (e.g., *"Make gpt-4o-mini the default for fast tasks"*)
+
+### Bayesian Model Quality Tracking
+
+The `BayesianTracker` maintains a **Beta(α, β) distribution** per model, updated via **offline calibration** against an 80-question golden dataset across coding, reasoning, and general categories. Models are selected using **Thompson Sampling** for optimal exploration/exploitation balance.
+
+### Provider Adapters & Auto-Discovery
+
+| Provider | Adapter | Doc Fetcher | Auto-Discovery |
+|---|---|---|:---:|
+| **OpenAI** | `openai.py` | `openai_docs.py` | ✅ |
+| **Anthropic** | `anthropic.py` | `anthropic_docs.py` | ✅ |
+| **Google (Vertex)** | `google.py` | `google_docs.py` | ✅ |
+| **NVIDIA NIM** | `nvidia_nim.py` | `nvidia_docs.py` | ✅ |
+| **Azure OpenAI** | `azure.py` | `azure_docs.py` | ✅ |
+| **AWS Bedrock** | `aws_bedrock.py` | `aws_docs.py` | ✅ |
+| **Ollama** | `ollama.py` | `ollama_docs.py` | ✅ |
+| **Together AI** | `together.py` | `together_docs.py` | ✅ |
+| **Fireworks AI** | `fireworks.py` | `fireworks_docs.py` | ✅ |
+| **Groq** | `groq.py` | `groq_docs.py` | ✅ |
+
+Each adapter implements the `ProviderAdapter` interface and registers with the `AutoModelRegistry`. The `ProfessionalResearcherAgent` uses 11 dedicated **doc fetchers** to cross-validate model specs against official sources.
 
 ---
 
-<a id="definition-of-done"></a>
-## ✅ Definition of Done *(v1)*
+## ⚡ Quick Start
+
+### Prerequisites
+
+- **Python ≥ 3.11**
+- **[uv](https://github.com/astral-sh/uv)** (recommended) or pip
+- At least one LLM provider API key (NVIDIA NIM, OpenAI, etc.)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/MONaser04/ai-dev-team.git
+cd ai-dev-team
+
+# Install dependencies
+uv sync
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Usage
+
+```bash
+# Interactive mode (recommended)
+python main.py
+
+# One-liner execution
+python main.py "Write a FastAPI CRUD app for a todo list"
+
+# Voice mode (requires PyAudio + Google Gemini API key)
+python main.py voice
+
+# Calibrate model quality scores
+# (type "calibrate" in the interactive prompt)
+```
+
+### Infrastructure (Optional)
+
+```bash
+# Start local services (Postgres, Qdrant, LiteLLM, Jaeger, Langfuse)
+make up
+
+# Run tests (fully offline, zero API calls)
+make test
+
+# Full CI check (lint + typecheck + test)
+make all
+```
+
+---
+
+## 🧪 Testing & Evaluation
+
+### Test Infrastructure (29 Test Suites)
+
+All tests run with **zero real API calls** using comprehensive mocks:
+
+| Category | Files | Coverage |
+|---|---|---|
+| **Core Loop** | `test_orchestrator.py`, `test_contracts.py`, `test_state.py` | State machine, Pydantic contracts, event store |
+| **Agents** | `test_agents.py`, `test_verification.py`, `test_smoke.py` | All 17 agent roles, verification steps |
+| **Gateway** | `test_phase3_gateway.py`, `test_phase3_cost_tracker.py` | SmartGateway, routing, cost caps |
+| **Routing** | `test_routing.py`, `test_bayesian_routing.py`, `test_beta_routing.py` | Bayesian tracker, Thompson sampling |
+| **Tools** | `test_phase3_mcp_registry.py`, `test_phase3_policy_engine.py`, `test_phase3_memory.py` | MCP registry, policies, memory |
+| **HITL** | `test_hitl.py`, `test_phase5_closed_loop.py`, `test_phase5_e2e.py` | Break-glass, convergence, artifacts |
+| **Evaluation** | `test_phase5_eval.py`, `test_phase6_*` (5 files) | LLM-as-Judge, trajectory eval, red-team |
+| **Optimization** | `test_phase7_optim.py` | DSPy/GEPA prompt tuning, convergence |
+| **Research** | `test_professional_researcher.py`, `test_registry_crud.py` | Doc fetchers, registry CRUD |
+| **Observability** | `test_phase4_observability_setup.py` | OTel spans, metrics |
+
+### Evaluation Harness
+
+| Suite | Location | Purpose |
+|---|---|---|
+| **Golden Set** | `evals/golden/tasks.yaml` (20+ tasks) | Personal benchmark tasks |
+| **SWE-bench** | `evals/swebench/harness.py` | Real GitHub issue resolution |
+| **LLM-as-Judge** | `evals/judges/` | Calibrated judge rubrics (Cohen's κ > 0.6) |
+| **Red Team** | `evals/redteam/` | PyRIT + garak campaigns against OWASP Top 10 |
+| **Router Eval** | `evals/router/` | Routing quality + anti-drift guardrails |
+
+---
+
+## 🧱 Core Subsystems
+
+### Event-Sourced State (`src/state/`)
+
+Every workflow mutation is an **immutable event** in an append-only log. Current state is a projection:
+
+- **Event types**: 15+ types covering task lifecycle, coding cycle, rebuttal flow, full SDLC
+- **Schema**: `{event_id, workflow_id, agent_id, event_type, payload, version, timestamp, causation_id, correlation_id}`
+- **Optimistic locking**: Version-checked conditional writes prevent concurrent overwrites
+- **Storage**: SQLite for local dev, Postgres for production
+
+### Type-Safe Contracts (`src/contracts/`)
+
+Every agent boundary is a **strict Pydantic v2 schema** validated before committing to the event log:
+
+| Contract | Flow | Lines |
+|---|---|---|
+| `TaskAssignment` | Orchestrator → Coder | Schema: description, language, constraints, iteration |
+| `CodePatch` | Coder → Tester | Files with path + content, explanation |
+| `VerificationReport` | Tester → Critic | Test results, type-check, lint, security (facts only) |
+| `ReviewDecision` | Critic → Orchestrator | Verdict (PASS/BLOCK), issues, escalation level |
+| `RebuttalRequest` | Coder → Critic | Justification, disputed issues |
+| `ProductRequirementDoc` | Analyst → Planner | User stories, acceptance criteria |
+| `ArchitectDesign` | Architect → Fan-out | ADRs, component diagram, tech choices |
+| `ResearchReport` | Deep Research → Complete | Key findings, data points, sources, confidence |
+
+### Semantic Router (`src/orchestrator/semantic_router.py`)
+
+6-domain classifier with confidence-aware routing:
+
+| Domain | Description | Route |
+|---|---|---|
+| `software_engineering` | Coding, debugging, architecture | → Supervisor star topology |
+| `deep_research` | Open web research, market analysis | → Deep Research Agent |
+| `media_production` | Audio, image, video generation | → Media Production (placeholder) |
+| `conversational` | General chat, greetings | → Direct LLM response |
+| `system_command` | Model registry management | → Operator Agent |
+| `os_command` | File deletion, directory ops | → Operator Agent |
+
+**Complexity sub-routing** for software engineering:
+- **SIMPLE** → Fast Lane (direct Coder → Critic)
+- **MEDIUM** → Full SDLC pipeline
+- **COMPLEX** → Full SDLC with fan-out parallelism
+- **EXPLORATION** → Project Explorer (read-only codebase analysis)
+
+### Resilience Layer (`src/resilience/`)
+
+| Component | File | Purpose |
+|---|---|---|
+| **Circuit Breaker** | `circuit_breaker.py` (301 lines) | Per-model failure tracking, CLOSED → OPEN → HALF_OPEN states |
+| **Fallback Chain** | `fallback_chain.py` (190 lines) | Ordered model fallback with cooldown periods |
+| **Rate Limiter** | `rate_limiter.py` (210 lines) | Per-provider token bucket rate limiting |
+| **Health Monitor** | `health_monitor.py` (300 lines) | Continuous health checks with alerting |
+
+### Memory Layer (`src/memory/`)
+
+| Type | File | Backend |
+|---|---|---|
+| **Working** | (context window) | In-memory |
+| **Episodic** | `episodic.py` (376 lines) | Qdrant vector store — past runs/failures by similarity |
+| **Semantic** | `semantic.py` (298 lines) | Key-value store — project conventions, mandates |
+
+### MCP Tools & Sandbox (`src/tools/`)
+
+- **MCP Registry** (`mcp_registry.py`, 544 lines) — Model Context Protocol tool definitions
+- **Policy Engine** (`policy_engine.py`, 498 lines) — Default-deny, role-scoped permission matrix
+- **Tool Executor** (`tool_executor.py`, 482 lines) — Executes tools with policy enforcement
+- **Sandbox** (`sandbox.py`, 336 lines) — Hardened Docker execution (network off, caps dropped, read-only FS)
+
+### Observability (`src/observability/`)
+
+Instrumented with **OpenTelemetry GenAI semantic conventions**:
+
+- Spans: `invoke_agent.{role}` → `chat` → `execute_tool.{name}`
+- Attributes: `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.response.finish_reason`
+- Metrics: `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`
+- Backends: **Jaeger** (traces UI), **Langfuse** (LLM observability, prompts, cost, quality)
+- Prompt-content capture **off by default** (privacy)
+
+### Self-Improvement (`optim/`)
+
+Closed-loop optimization pipeline:
+
+| Module | Purpose |
+|---|---|
+| `analyser.py` | Analyzes evaluation round results, identifies failure patterns |
+| `convergence.py` | Checks if optimization has converged (improvement threshold + patience) |
+| `feedback_store.py` | SQLite-backed persistent storage for optimization feedback |
+| `model_optimiser.py` | Optimizes model routing based on evaluation data |
+| `prompt_tuner.py` | Automated prompt optimization (DSPy MIPROv2 / GEPA) |
+| `reporter.py` | Generates optimization reports |
+
+---
+
+## 📂 Repository Structure
+
+```text
+ai-dev-team/                          # 19,597 lines · 100 Python files
+├── main.py                           # Interactive CLI + one-liner + voice mode
+├── pyproject.toml                    # uv/hatch, Python ≥3.11, pinned deps
+├── Makefile                          # install · test · lint · format · typecheck · up · down · eval
+├── docker-compose.yml                # Postgres · Qdrant · LiteLLM · Jaeger · Langfuse
+├── .env.example                      # 10 provider keys + infra config
+│
+├── config/
+│   ├── litellm.yaml                  # 4-alias routing (frontier/fast/critic/fallback)
+│   ├── policies.yaml                 # Default-deny tool permission matrix
+│   ├── phase5.yaml                   # Optimization loop configuration
+│   ├── router_eval.yaml              # Router evaluation config
+│   └── agents/                       # Per-agent prompt + contract configs
+│
+├── src/
+│   ├── orchestrator/                 # LangGraph state machine (1,148-line graph.py)
+│   │   ├── graph.py                  # Star topology: all agents → Supervisor → next agent
+│   │   ├── runner.py                 # Workflow runner with Phase 5 hooks
+│   │   ├── semantic_router.py        # 6-domain + complexity sub-classifier
+│   │   ├── hitl.py                   # Human-in-the-Loop (CLI/webhook/auto)
+│   │   ├── convergence.py            # Early stopping when improvements plateau
+│   │   ├── artifacts.py              # Versioned build artifact management
+│   │   └── command_executor.py       # System command execution
+│   │
+│   ├── agents/                       # 17+ role agents (23 Python files)
+│   │   ├── supervisor.py             # ⭐ Dynamic LLM-driven routing hub
+│   │   ├── coder.py                  # Frontier model code generation + rebuttal
+│   │   ├── critic.py                 # Grounded critic with escalation ladder
+│   │   ├── tester.py                 # External verification signal generator
+│   │   ├── deep_research.py          # Open web research with MCP tools
+│   │   ├── explorer.py               # Codebase exploration (file_list/file_read)
+│   │   ├── professional_researcher.py # Zero-LLM-knowledge verified researcher
+│   │   ├── voice_agent.py            # Real-time voice via Gemini Live API
+│   │   ├── operator.py               # System administration agent
+│   │   ├── optimizator.py            # Closed-loop self-improvement orchestrator
+│   │   ├── liaison.py                # Natural language passthrough
+│   │   ├── critic_factory.py         # Dedicated critic creation per role
+│   │   └── researcher_docs/          # 11 provider-specific doc fetchers
+│   │       ├── openai_docs.py        #   (OpenAI, Anthropic, Google, NVIDIA,
+│   │       ├── anthropic_docs.py     #    Azure, AWS, Ollama, Together,
+│   │       ├── ...                   #    Fireworks, Groq)
+│   │       └── base.py               #   OfficialDocsFetcher base class
+│   │
+│   ├── gateway/                      # SmartGateway + 10 Provider Adapters
+│   │   ├── smart_gateway.py          # THE gateway (735 lines, 6-factor routing)
+│   │   ├── model_registry.py         # AutoModelRegistry (814 lines, auto-discovery)
+│   │   ├── llm_client.py             # Thin sync/async wrapper → SmartGateway
+│   │   ├── cost_tracker.py           # Per-workflow budget enforcement
+│   │   ├── bayesian_tracker.py       # Beta distribution + Thompson Sampling
+│   │   ├── evaluator.py              # Offline LLM-as-Judge calibration
+│   │   ├── golden_dataset.json       # 80-question calibration dataset
+│   │   ├── routing/
+│   │   │   ├── calibration_engine.py # Background calibration queue
+│   │   │   └── route_profile.py      # Routing profile definitions
+│   │   └── providers/                # 10 provider adapters
+│   │       ├── openai.py · anthropic.py · google.py · nvidia_nim.py
+│   │       ├── azure.py · aws_bedrock.py · ollama.py
+│   │       └── together.py · fireworks.py · groq.py
+│   │
+│   ├── contracts/                    # Pydantic v2 strict-mode schemas (8 files)
+│   │   ├── schemas.py                # 797 lines — all inter-agent contracts
+│   │   ├── system_commands.py        # SystemAction enum + AR/EN parser
+│   │   ├── feedback.py · intent.py · run.py
+│   │   ├── eval_result.py · optim_report.py
+│   │   └── __init__.py
+│   │
+│   ├── state/                        # Event-sourced append-only log
+│   │   ├── events.py                 # 15+ event types, immutable Event model
+│   │   ├── store.py                  # Abstract + SQLite implementation
+│   │   └── projections.py            # Current state from event replay
+│   │
+│   ├── resilience/                   # 4-component resilience layer
+│   │   ├── circuit_breaker.py        # CLOSED → OPEN → HALF_OPEN
+│   │   ├── fallback_chain.py         # Ordered model fallback
+│   │   ├── rate_limiter.py           # Token bucket per-provider
+│   │   └── health_monitor.py         # Continuous health checks
+│   │
+│   ├── memory/                       # Episodic + Semantic memory
+│   │   ├── episodic.py               # Qdrant vector store integration
+│   │   ├── semantic.py               # Key-value project facts
+│   │   └── memory_manager.py         # Unified memory interface
+│   │
+│   ├── tools/                        # MCP tools + sandboxing
+│   │   ├── mcp_registry.py           # MCP-compliant tool definitions
+│   │   ├── policy_engine.py          # Default-deny role-scoped permissions
+│   │   ├── tool_executor.py          # Execute with policy enforcement
+│   │   ├── sandbox.py                # Docker/gVisor hardened execution
+│   │   ├── screen_capture.py         # Screen sharing for voice agent
+│   │   └── liaison_tool.py           # Liaison delegation tool
+│   │
+│   ├── verification/                 # Composable external signal generators
+│   │   ├── steps.py                  # pytest · mypy · ruff · bandit steps
+│   │   └── runner.py                 # Chains verification steps in order
+│   │
+│   └── observability/                # OpenTelemetry GenAI instrumentation
+│       ├── instrumentation.py        # @trace_agent_invocation decorator
+│       ├── tracing.py                # OTel tracer + span names
+│       └── metrics.py                # Token usage + duration metrics
+│
+├── evals/                            # Evaluation harness (5 suites)
+│   ├── golden/                       # 20+ personal golden tasks
+│   ├── swebench/                     # SWE-bench Lite/Verified harness
+│   ├── judges/                       # LLM-as-Judge calibration + rubrics
+│   ├── redteam/                      # PyRIT + garak OWASP campaigns
+│   └── router/                       # Router quality evaluation
+│
+├── optim/                            # Self-improvement optimization
+│   ├── analyser.py · convergence.py · feedback_store.py
+│   ├── model_optimiser.py · prompt_tuner.py · reporter.py
+│   └── feedback.db                   # SQLite optimization history
+│
+├── tests/                            # 29 test files (zero API calls)
+│   ├── mocks/                        # MockGateway, MockProviderAPIs, etc.
+│   └── fixtures/                     # sample_models.json, golden_tasks.yaml
+│
+├── scripts/                          # Maintenance + debugging scripts
+│   ├── run_supervisor.py             # Run supervisor optimization
+│   ├── test_run_phase5.py            # Phase 5 integration test script
+│   └── audit_ground_truth.py         # Audit model registry ground truth
+│
+└── docs/
+    └── COMPREHENSIVE_MASTER_PLAN.md  # 92KB detailed implementation plan
+```
+
+---
+
+## 🗺️ Roadmap
+
+| Phase | Focus | Key Deliverables | Status |
+|:---:|---|---|:---:|
+| **0** | Foundation & Environment | Repo setup, circular import fixes, mock test infra | ✅ Done |
+| **1** | State, Contracts & Minimal Loop | Event store, Pydantic schemas, Coder→Tester→Critic loop, AutoModelRegistry | ✅ Done |
+| **2** | Grounded Verification Layer | Tester agent, Grounded Critic, rebuttal protocol, ProfessionalResearcher | ✅ Done |
+| **3** | Gateway, Tools & Memory | SmartGateway, 10 provider adapters, MCP tools, sandbox, memory | ✅ Done |
+| **4** | Observability & Full Roster | OTel instrumentation, Supervisor star topology, full SDLC fan-out/fan-in | ✅ Done |
+| **5** | Resilience & HITL | Circuit breakers, fallback chains, break-glass protocol, convergence | ✅ Done |
+| **6** | Evaluation & Red-Teaming | Golden set, SWE-bench, LLM-as-Judge, PyRIT/garak red-team | ✅ Done |
+| **7** | Self-Improvement & Hardening | DSPy/GEPA prompt optimization, Bayesian routing, governance | 🟨 In Progress |
+
+---
+
+## 📊 Current Project Status
+
+| Metric | Value |
+|---|---|
+| **Source files** | 100 Python files across 10 packages |
+| **Lines of code** | 19,597 lines (src/ only) |
+| **Test suites** | 29 test files, fully offline |
+| **Agent roles** | 17 specialized + 3 operational |
+| **Provider adapters** | 10 (with 11 doc fetchers) |
+| **Contract schemas** | 797 lines of strict Pydantic v2 |
+| **Event types** | 15+ in the event-sourced log |
+| **Golden tasks** | 20+ evaluation tasks |
+| **Calibration questions** | 80 (coding + reasoning + general) |
+
+---
+
+## ✅ Definition of Done (v1)
 
 The system autonomously takes a well-specified coding task and produces **runnable, test-passing code**, with:
 
-- ✅ full OpenTelemetry traces of every agent/tool call,
-- ✅ hard per-workflow cost caps enforced,
-- ✅ all code executed in a secure sandbox,
-- ✅ a working human **break-glass** interrupt + resume,
-- ✅ a measured **SWE-bench Lite** score that **beats a single-agent baseline**.
-
-[↑ Back to top](#top)
+- [x] Full OpenTelemetry traces of every agent/tool call
+- [x] Hard per-workflow cost caps enforced (CostTracker + LiteLLM)
+- [x] All code executed in a secure sandbox (Docker/gVisor)
+- [x] Working human break-glass interrupt + resume (HITL gates)
+- [ ] Measured **SWE-bench Lite** score that beats a single-agent baseline
 
 ---
 
-<a id="glossary"></a>
-## 📕 Glossary
+## 📚 Research Basis & Sources
 
-| Term | Meaning |
+| Topic | Source |
 |---|---|
-| **Event Sourcing** | Storing state as an append-only log of immutable events; current state is a replay/projection. |
-| **Optimistic Locking** | Version-checked conditional writes so concurrent agents can't silently overwrite each other. |
-| **Blackboard** | Shared state space agents read from and write to (here, the event log). |
-| **Evaluator-Optimizer** | Pattern where one agent produces and another evaluates in a loop (Anthropic). |
-| **Grounded Verification** | Verification driven by external, verifiable signals (tests/types/lint/exec) before any LLM judgment. |
-| **HITL / Break-Glass** | Human-in-the-loop; a durable pause letting a human fix state and resume deterministically. |
-| **MCP** | Model Context Protocol — open standard for agent↔tool access (Linux Foundation). |
-| **A2A** | Agent2Agent protocol — open standard for agent↔agent interop (Linux Foundation, v1.0). |
-| **LLM-as-Judge** | Using an LLM, calibrated against human labels, to score open-ended outputs. |
-| **DAG Fan-out/Fan-in** | Running independent agents in parallel then merging their outputs at a convergence point. |
-| **SWE-bench** | Benchmark of real GitHub issues used to measure software-engineering agents (Verified = 500, Lite = 300). |
-
-[↑ Back to top](#top)
+| **Agentic Patterns** | [Anthropic — "Building Effective Agents"](https://www.anthropic.com/engineering/building-effective-agents) |
+| **Self-Correction** | [MIT Press/TACL — "When Can LLMs Actually Correct Their Own Mistakes?"](https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00713/125177/) |
+| **Security** | [OWASP Top 10 for Agentic Applications 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) |
+| **Tools Protocol** | [Model Context Protocol (MCP)](https://spec.modelcontextprotocol.io/) — Linux Foundation |
+| **Agent Interop** | [A2A Protocol v1.0](https://a2a-protocol.org/latest/) — Linux Foundation |
+| **Observability** | [OpenTelemetry GenAI Semantic Conventions](https://opentelemetry.io/blog/2026/genai-observability/) |
+| **Optimization** | [DSPy MIPROv2](https://dspy.ai/) · [GEPA](https://github.com/gepa-ai/gepa) |
+| **Evaluation** | [promptfoo](https://www.promptfoo.dev/) · [DeepEval](https://deepeval.com/) |
+| **Benchmarks** | [SWE-bench](https://www.swebench.com/) · Reflexion (NeurIPS 2023) · Self-Refine (NeurIPS 2023) |
+| **Frameworks** | [LangGraph](https://github.com/langchain-ai/langgraph) · [LiteLLM Router](https://docs.litellm.ai/docs/routing) |
 
 ---
 
-<a id="sources"></a>
-## 📚 Research Basis & Sources *(Official / Peer-Reviewed / Published)*
-
-**Agentic Patterns & Self-Correction**
-- **Anthropic — "Building Effective Agents"** (simple composable patterns; orchestrator-workers & evaluator-optimizer): https://www.anthropic.com/engineering/building-effective-agents
-- **MIT Press / TACL — "When Can LLMs Actually Correct Their Own Mistakes? A Critical Survey"** (self-correction needs external feedback): https://direct.mit.edu/tacl/article/doi/10.1162/tacl_a_00713/125177/
-- **Reflexion** (NeurIPS 2023): https://proceedings.neurips.cc/paper_files/paper/2023/file/1b44b878bb782e6954cd888628510e90-Paper-Conference.pdf
-- **Self-Refine** (NeurIPS 2023): https://proceedings.neurips.cc/paper_files/paper/2023/file/91edff07232fb1b55a505a9e9f6c0ff3-Paper-Conference.pdf
-
-**Security & Standards**
-- **OWASP Top 10 for Agentic Applications 2026** *(pub. Dec 9, 2025)*: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
-- **A2A Protocol** *(Linux Foundation; v1.0)*: https://a2a-protocol.org/latest/ · https://github.com/a2aproject/A2A
-- **Model Context Protocol (MCP)** — under the LF Agentic AI Foundation *(Dec 2025)*.
-- **OpenTelemetry — GenAI Observability & Semantic Conventions** *(2026)*: https://opentelemetry.io/blog/2026/genai-observability/ · https://github.com/open-telemetry/semantic-conventions-genai
-
-**Optimization & Evaluation**
-- **DSPy (Stanford) & GEPA optimizer**: https://dspy.ai/api/optimizers/GEPA/overview/ · https://github.com/gepa-ai/gepa
-- **LLM-as-a-Judge best practices**: https://www.promptfoo.dev/docs/guides/llm-as-a-judge/ · https://deepeval.com/blog/llm-as-a-judge
-
-**Frameworks & Architecture**
-- **LangGraph** *(engine choice; 2026 framework comparison)*: https://aicraftguide.com/article/langgraph-crewai-openai-agents-sdk-autogen-multi-agent-2026
-- **LiteLLM Router** *(self-hosted gateway)*: https://docs.litellm.ai/docs/routing
-- **Agent memory** *(Letta/MemGPT, Mem0, LangMem, Zep)*: https://vectorize.io/articles/mem0-vs-letta
-- **Agent sandboxing** *(Docker/gVisor/Firecracker/E2B, 2026)*: https://amux.io/guides/ai-agent-sandboxing/
-- **Multi-agent SW engineering** *(roles + benchmark)*: MetaGPT https://arxiv.org/html/2308.00352v7 · ChatDev *(design→code→test chain)* · SWE-bench https://www.swebench.com/
-
-[↑ Back to top](#top)
-
----
-
-<a id="license"></a>
 ## 📄 License
 
-Recommended: **MIT** (simple and permissive for a solo open-source build). Add a `LICENSE` file at the repo root.
+[MIT](LICENSE) — simple and permissive for an open-source build.
 
 ---
 
-<sub>Research-grounded and scoped to what one person can actually ship. Start at Phase 0, prove value at Phase 1, and let the benchmark decide what survives.</sub>
+<div align="center">
+
+*Research-grounded · Verification-first · Provider-agnostic*
+
+*Built on verifiable external signals, not LLM sycophancy.*
+
+</div>

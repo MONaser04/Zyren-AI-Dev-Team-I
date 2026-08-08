@@ -24,6 +24,11 @@ dependencies = [
     "opentelemetry-api>=1.28,<2.0",
     "opentelemetry-sdk>=1.28,<2.0",
     "opentelemetry-exporter-otlp-proto-http>=1.28,<2.0",
+    "pyaudio>=0.2.14",
+    "google-genai>=2.16.0",
+    "mss>=10.2.0",
+    "pygetwindow>=0.0.9",
+    "pillow>=12.3.0",
 ]
 
 [project.optional-dependencies]

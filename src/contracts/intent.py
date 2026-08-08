@@ -15,6 +15,7 @@ class UserIntentCategory(str, Enum):
     DEEP_RESEARCH = "deep_research"
     FAST_CODE = "fast_code"
     FULL_SDLC = "full_sdlc"
+    EXPLORATION = "exploration"
 
 class ParsedIntent(BaseModel):
     """The structured output of the LLM intent classifier."""

@@ -47,6 +47,7 @@ class WorkflowResult:
     success: bool
     iterations: int
     final_code: dict[str, str] = field(default_factory=dict)
+    explanation: str | None = None
     error: str | None = None
     events_count: int = 0
     # Phase 5 additions
@@ -201,11 +202,19 @@ def run_workflow(
 
     # Extract final code files
     final_code: dict[str, str] = {}
+    explanation = None
     code_patch = final_state.get("code_patch", {})
-    if isinstance(code_patch, dict) and "files" in code_patch:
-        for f in code_patch["files"]:
-            if isinstance(f, dict):
-                final_code[f.get("path", "unknown")] = f.get("content", "")
+    if isinstance(code_patch, dict):
+        if "files" in code_patch:
+            for f in code_patch["files"]:
+                if isinstance(f, dict):
+                    final_code[f.get("path", "unknown")] = f.get("content", "")
+        if "explanation" in code_patch:
+            explanation = code_patch.get("explanation")
+            
+    # Also extract explanation for conversational/os_command domains which might just return code_patch
+    if explanation is None and isinstance(code_patch, dict) and "explanation" in code_patch:
+        explanation = code_patch.get("explanation")
 
     # Add deep research report if present
     deep_research = final_state.get("deep_research_report")
@@ -240,7 +249,17 @@ def run_workflow(
             ])
         final_code["deep_research_data.csv"] = csv_buffer.getvalue()
 
-    success = final_state.get("verdict") == "PASS"
+    # Add exploration report if present
+    exploration = final_state.get("exploration_report")
+    if exploration:
+        explanation = exploration.get("answer")
+        success = True  # Exploratory queries are typically successful if they complete
+        if exploration.get("files_analyzed"):
+            explanation += "\n\nFiles analyzed:\n"
+            for f in exploration.get("files_analyzed"):
+                explanation += f"- {f}\n"
+
+    success = final_state.get("verdict") == "PASS" if not exploration else success
 
     # Phase 5: Collect additional results
     converged = False
@@ -263,6 +282,7 @@ def run_workflow(
         success=success,
         iterations=final_state.get("current_iteration", 0),
         final_code=final_code,
+        explanation=explanation,
         error=final_state.get("error"),
         events_count=len(events),
         converged=converged,

@@ -21,10 +21,12 @@ from enum import StrEnum
 from typing import Any, TypeVar
 
 import litellm
+litellm.telemetry = False
+
 from pydantic import BaseModel
 
 from gateway.cost_tracker import CostTracker
-from gateway.model_registry import AutoModelRegistry, ModelSpec, ModelTier, ModelStatus
+from gateway.model_registry import AutoModelRegistry, BenchmarkRegistry, ModelSpec, ModelTier, ModelStatus
 from observability import trace_chat
 from resilience import (
     CircuitBreaker,
@@ -93,6 +95,7 @@ class RoutingCriteria:
     cost_budget_usd: float | None = None
     preferred_tier: ModelTier | None = None
     workflow_id: str = ""
+    exclude_family: str | None = None  # For Critic diversity: exclude this model family
 
 
 # ============================================================
@@ -106,6 +109,13 @@ class SmartRouter:
     def __init__(self, registry: AutoModelRegistry):
         self._registry = registry
         self._manual_overrides: dict[str, str] = {}  # tier -> model_id
+        
+        from gateway.bayesian_tracker import BayesianTracker
+        from gateway.routing.calibration_engine import CalibrationEngine
+        self.bayesian_tracker = BayesianTracker()
+        self.calibration_engine = CalibrationEngine.get_instance(self._registry, self.bayesian_tracker)
+        if self.calibration_engine:
+            self.calibration_engine.start()
 
     def set_manual_override(self, tier: ModelTier, model_id: str) -> None:
         """Set manual model override for a tier."""
@@ -133,22 +143,8 @@ class SmartRouter:
         # Get models matching required capabilities
         candidates = self._filter_by_capabilities(criteria.required_capabilities)
 
-        # Filter by tier if specified
-        if criteria.preferred_tier:
-            candidates = [m for m in candidates if m.tier == criteria.preferred_tier]
-        elif criteria.complexity:
-            tier_map = {
-                "simple": ModelTier.FAST,
-                "complex": ModelTier.FRONTIER,
-                "critic": ModelTier.CRITIC,
-                "code": ModelTier.CODE_SPECIALIZED,
-                "long_context": ModelTier.LONG_CONTEXT,
-                "vision": ModelTier.VISION,
-            }
-            target_tier = tier_map.get(criteria.complexity)
-            if target_tier:
-                candidates = [m for m in candidates if m.tier == target_tier]
-
+        # Tier filtering removed to enable dynamic capabilities-based routing
+        
         if not candidates:
             # Fallback to any available model
             candidates = self._registry.get_active_models()
@@ -160,6 +156,25 @@ class SmartRouter:
         candidates = self._filter_by_availability(candidates)
         if not candidates:
             raise RuntimeError("No available models after availability filtering")
+
+        # Filter by family exclusion (for Critic diversity)
+        if criteria.exclude_family:
+            bench_reg = BenchmarkRegistry()
+            family_filtered = [
+                m for m in candidates
+                if bench_reg.get_family(m.model_id) != criteria.exclude_family
+            ]
+            if family_filtered:
+                candidates = family_filtered
+                logger.info(
+                    "Excluded family '%s' for diversity, %d candidates remain",
+                    criteria.exclude_family, len(candidates),
+                )
+            else:
+                logger.warning(
+                    "Cannot exclude family '%s' — no alternatives, keeping all",
+                    criteria.exclude_family,
+                )
 
         # Filter by cost budget
         if criteria.cost_budget_usd:
@@ -207,39 +222,31 @@ class SmartRouter:
         return [m for m in candidates if m.pricing and m.pricing.input_per_1m_tokens <= budget]
 
     def _score_models(self, candidates: list[ModelSpec], criteria: RoutingCriteria) -> list[ModelSpec]:
-        tier_map = {
-            "simple": ModelTier.FAST,
-            "complex": ModelTier.FRONTIER,
-            "critic": ModelTier.CRITIC,
-            "code": ModelTier.CODE_SPECIALIZED,
-        }
-        target_tier = tier_map.get(criteria.complexity)
+        """Score models predictively based on capability vs cost (RouteLLM style)."""
+        complexity = criteria.complexity or "simple"
 
         def get_score(model: ModelSpec) -> float:
-            quality_scores = {
-                ModelTier.FRONTIER: 1.0,
-                ModelTier.LONG_CONTEXT: 0.9,
-                ModelTier.VISION: 0.85,
-                ModelTier.CODE_SPECIALIZED: 0.8,
-                ModelTier.CRITIC: 0.75,
-                ModelTier.FAST: 0.6,
-            }
-            base_score = quality_scores.get(model.tier, 0.5)
+            # 1. Graph-Informed Priors
+            from gateway.routing.route_profile import RouteProfile
+            prior_alpha, prior_beta = RouteProfile.extract_profile_priors(model.model_id)
             
-            if target_tier and model.tier == target_tier:
-                base_score += 2.0
-                
-            if target_tier == ModelTier.FAST and model.tier == ModelTier.FRONTIER:
-                base_score -= 0.5
+            # 2. Check if we already have strong official benchmarks to initialize the posterior
+            bs = model.benchmark_scores
+                    
+            # 3. Use Bayesian Thompson Sampling for expected quality
+            state = self.bayesian_tracker.get_state(model.model_id, prior_alpha, prior_beta)
+            expected_quality = self.bayesian_tracker.sample(model.model_id, prior_alpha, prior_beta)
 
-            cost = 0.0
-            if model.pricing:
-                cost = model.pricing.input_per_1m_tokens + model.pricing.output_per_1m_tokens
-            cost_efficiency = 1.0 / (1.0 + cost) if cost > 0 else 1.0
+            # 5. Cost-Quality Utility Maximization
+            # Utility = P(Quality|Query) - (w * Cost)
+            cost = model.pricing.input_per_1m_tokens if model.pricing else 0.0
+            w = 0.05 # Economic weight parameter (can be scaled by user budget)
+            utility = expected_quality - (w * cost)
+            
+            return utility
 
-            return base_score * 0.7 + cost_efficiency * 0.3
-
-        return sorted(candidates, key=get_score, reverse=True)
+        scored_candidates = sorted(candidates, key=get_score, reverse=True)
+        return scored_candidates
 
     def _apply_manual_overrides(self, scored: list[ModelSpec]) -> list[ModelSpec]:
         for tier_name, model_id in self._manual_overrides.items():
@@ -257,69 +264,23 @@ class SmartRouter:
     ) -> list[ModelSpec]:
         fallbacks = []
         primary_provider = primary.provider
-        primary_family = self._get_model_family(primary.model_id)
 
         for alt in alternatives:
             if len(fallbacks) >= 3:
                 break
-            alt_provider = alt.provider
-            alt_family = self._get_model_family(alt.model_id)
-
-            if alt_provider != primary_provider and alt_family != primary_family:
+            # Because alternatives are already sorted by Utility = Quality - w*Cost,
+            # we just take the top next models that aren't the primary model.
+            if alt.model_id != primary.model_id:
                 fallbacks.append(alt)
 
         return fallbacks
 
     def _get_model_family(self, model_id: str) -> str:
-        parts = model_id.split("/")
-        if len(parts) > 1:
-            name = parts[-1].lower()
-        else:
-            name = model_id.lower()
+        """Get model family using BenchmarkRegistry."""
+        bench_reg = BenchmarkRegistry()
+        return bench_reg.get_family(model_id)
 
-        families = ["nemotron", "llama", "gpt", "claude", "gemini", "mistral", "mixtral", "qwen", "phi", "gemma"]
-        for fam in families:
-            if fam in name:
-                return fam
-        return name.split("-")[0] if "-" in name else name[:10]
 
-    def create_default_chains(self) -> FallbackChain:
-        """Create default fallback chains for common tiers."""
-        chain = FallbackChain()
-
-        # Frontier model fallbacks
-        chain.register_chain(
-            "frontier",
-            [
-                {"model": "nvidia_nim/nvidia/nemotron-4-340b", "provider": "nvidia_nim", "tier": "frontier", "priority": 0},
-                {"model": "openai/gpt-4o", "provider": "openai", "tier": "frontier", "priority": 1},
-                {"model": "anthropic/claude-3.5-sonnet", "provider": "anthropic", "tier": "frontier", "priority": 2},
-                {"model": "google/gemini-1.5-pro", "provider": "google", "tier": "frontier", "priority": 3},
-            ],
-        )
-
-        # Fast model fallbacks
-        chain.register_chain(
-            "fast",
-            [
-                {"model": "nvidia_nim/minimaxai/minimax-m3", "provider": "nvidia_nim", "tier": "fast", "priority": 0},
-                {"model": "openai/gpt-4o-mini", "provider": "openai", "tier": "fast", "priority": 1},
-                {"model": "groq/llama-3.1-8b-instant", "provider": "groq", "tier": "fast", "priority": 2},
-                {"model": "ollama/llama3.1-8b", "provider": "ollama", "tier": "fast", "priority": 3},
-            ],
-        )
-
-        # Critic model fallbacks
-        chain.register_chain(
-            "critic",
-            [
-                {"model": "nvidia_nim/google/gemma-4-31b-it", "provider": "nvidia_nim", "tier": "critic", "priority": 0},
-                {"model": "openai/gpt-4o-mini", "provider": "openai", "tier": "critic", "priority": 1},
-                {"model": "anthropic/claude-3-haiku", "provider": "anthropic", "tier": "critic", "priority": 2},
-            ],
-        )
-
-        return chain
 
 
 # ============================================================
@@ -341,10 +302,13 @@ class SmartGateway:
         self._registry = registry
         self._router = SmartRouter(registry)
         self._cost_tracker = cost_tracker
+        
+        if getattr(self._router, 'calibration_engine', None):
+            self._router.calibration_engine.set_gateway(self)
 
         # Resilience components
         self._circuit_breakers = CircuitBreakerRegistry()
-        self._fallback_chain = self._router.create_default_chains()
+        self._fallback_chain = FallbackChain()
         self._rate_limiter = RateLimiter()
         self._health_monitor = HealthMonitor()
 
@@ -352,6 +316,8 @@ class SmartGateway:
         self._provider_semaphores: dict[str, asyncio.Semaphore] = {}
         # Set RPM limit for NVIDIA NIM to 40
         self._rate_limiter.set_limits("nvidia_nim_provider", RateLimitConfig(rpm=40))
+        # Set RPM limit for Gemini to 15 (Free tier)
+        self._rate_limiter.set_limits("gemini_provider", RateLimitConfig(rpm=15))
 
         # Suppress litellm noise
         litellm.suppress_debug_info = True
@@ -367,13 +333,21 @@ class SmartGateway:
             required_capabilities=request.required_capabilities,
             cost_budget_usd=request.metadata.get("cost_budget"),
             workflow_id=request.workflow_id,
+            exclude_family=request.metadata.get("exclude_family"),
         )
         decision = self._router.find_optimal_model(criteria)
 
         if request.model:
             requested_model = self._registry.get_model(request.model) or self._registry.resolve_alias(request.model)
             if requested_model:
-                fallbacks = [m for m in decision.fallback_chain if m.model_id != requested_model.model_id]
+                # Rebuild fallback chain around the explicitly requested model
+                # Remove the requested model from the list of ALL active models to form alternatives
+                all_models = self._registry.get_active_models()
+                alternatives = [m for m in all_models if m.model_id != requested_model.model_id]
+                # Re-score alternatives using the original criteria
+                scored_alts = self._router._score_models(alternatives, criteria)
+                fallbacks = self._router._build_fallback_chain(requested_model, scored_alts, criteria)
+                
                 decision = RoutingDecision(
                     primary_model=requested_model,
                     fallback_chain=fallbacks,
@@ -440,94 +414,124 @@ class SmartGateway:
             metadata=request.metadata,
         )
 
-        response = await self.complete(new_request)
+        last_error = None
+        for attempt in range(3):
+            try:
+                response = await self.complete(new_request)
+                
+                cleaned = response.content.strip()
+                if cleaned.startswith("```json"):
+                    cleaned = cleaned[7:]
+                if cleaned.startswith("```"):
+                    cleaned = cleaned[3:]
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3]
+                cleaned = cleaned.strip()
+                parsed = {}
+                
+                # Try direct parse first
+                try:
+                    parsed = json.loads(cleaned)
+                except json.JSONDecodeError:
+                    # Extract first JSON object from response
+                    start = cleaned.find("{")
+                    if start == -1:
+                        logger.warning(f"No JSON found. Raw LLM output: {response.content}")
+                        raise ValueError(f"No JSON object found in response: {cleaned[:100]}")
+                    stack = []
+                    end = start
+                    in_string = False
+                    escape = False
+                    for i, ch in enumerate(cleaned[start:], start):
+                        if not in_string:
+                            if ch == "{":
+                                stack.append("}")
+                            elif ch == "[":
+                                stack.append("]")
+                            elif ch == "}" or ch == "]":
+                                if stack and stack[-1] == ch:
+                                    stack.pop()
+                                if not stack:
+                                    end = i + 1
+                                    break
+                            elif ch == '"':
+                                in_string = True
+                        else:
+                            if escape:
+                                escape = False
+                            elif ch == '\\':
+                                escape = True
+                            elif ch == '"':
+                                in_string = False
 
-        try:
-            cleaned = response.content.strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            if cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-            cleaned = cleaned.strip()
-            parsed = {}
-            
-            # Try direct parse first
-            try:
-                parsed = json.loads(cleaned)
-            except json.JSONDecodeError:
-                # Extract first JSON object from response
-                start = cleaned.find("{")
-                if start == -1:
-                    raise ValueError(f"No JSON object found in response: {cleaned[:100]}")
-                depth = 0
-                end = start
-                in_string = False
-                escape = False
-                for i, ch in enumerate(cleaned[start:], start):
-                    if not in_string:
-                        if ch == "{":
-                            depth += 1
-                        elif ch == "}":
-                            depth -= 1
-                            if depth == 0:
-                                end = i + 1
-                                break
-                        elif ch == '"':
-                            in_string = True
+                    if stack:
+                        suffix = ""
+                        if in_string:
+                            suffix += '"'
+                        while stack:
+                            suffix += stack.pop()
+                        cleaned_obj = cleaned[start:] + suffix
                     else:
-                        if escape:
-                            escape = False
-                        elif ch == '\\':
-                            escape = True
-                        elif ch == '"':
-                            in_string = False
-                if depth != 0:
-                    cleaned_obj = cleaned[start:] + ("}" * depth)
-                else:
-                    cleaned_obj = cleaned[start:end]
-                parsed = json.loads(cleaned_obj)
-            try:
-                return target_model.model_validate(parsed, strict=False)
-            except Exception as val_err:
-                logger.warning("Pydantic validation failed for %s: %s. Attempting fallback...", target_model.__name__, val_err)
-                if target_model.__name__ == "RoutingDecision":
-                    from contracts.schemas import TaskComplexity, RoutingDecision, TargetDomain, SWEComplexityDecision
-                    return RoutingDecision(
-                        domain=TargetDomain.SOFTWARE_ENGINEERING,
-                        confidence=0.5,
-                        safe_fallback=True,
-                        reasoning="Fallback routing due to structured output parsing",
-                        fast_lane=False,
-                        swe_sub=SWEComplexityDecision(
-                            complexity=TaskComplexity.MEDIUM,
-                            confidence=0.5,
-                            safe_fallback=True,
-                            reasoning="Fallback SE sub-route",
-                            fast_lane=False,
-                        ),
+                        cleaned_obj = cleaned[start:end]
+                    
+                    try:
+                        parsed = json.loads(cleaned_obj)
+                    except json.JSONDecodeError as err:
+                        if "}" not in suffix:
+                            # If we added closing braces and it still failed, it's definitely invalid
+                            raise ValueError(f"JSONDecodeError: {str(err)} for extracted string: {cleaned_obj[:100]}...")
+                        else:
+                            raise err
+                
+                try:
+                    return target_model.model_validate(parsed, strict=False)
+                except Exception as val_err:
+                    logger.warning("Pydantic validation failed for %s: %s. Attempting fallback...", target_model.__name__, val_err)
+                    raise val_err
+
+            except Exception as e:
+                last_error = e
+                logger.warning("Structured parse/execution failed attempt %d: %s", attempt + 1, e)
+                
+                # If we got a response but it failed parsing, add it to history and ask for a fix
+                if 'response' in locals() and response:
+                    new_messages = list(new_request.messages)
+                    new_messages.append({"role": "assistant", "content": response.content})
+                    new_messages.append({
+                        "role": "user", 
+                        "content": f"Your previous response failed validation: {str(e)}\nCRITICAL: You must fix this and return ONLY a valid JSON object matching the schema."
+                    })
+                    new_request = CompletionRequest(
+                        model=new_request.model,
+                        messages=new_messages,
+                        temperature=new_request.temperature,
+                        max_tokens=new_request.max_tokens,
+                        workflow_id=new_request.workflow_id,
+                        complexity=new_request.complexity,
+                        required_capabilities=new_request.required_capabilities,
+                        metadata=new_request.metadata,
                     )
-                raise
-        except Exception as e:
-            logger.error("Failed to parse structured response: %s", e)
-            if target_model.__name__ == "RoutingDecision":
-                from contracts.schemas import TaskComplexity, RoutingDecision, TargetDomain, SWEComplexityDecision
-                return RoutingDecision(
-                    domain=TargetDomain.SOFTWARE_ENGINEERING,
+        
+        # If we exhausted retries, try safe fallback if it's RoutingDecision
+        logger.error("Failed to parse structured response after 3 attempts: %s", last_error)
+        if target_model.__name__ == "RoutingDecision":
+            from contracts.schemas import TaskComplexity, RoutingDecision, TargetDomain, SWEComplexityDecision
+            return RoutingDecision(
+                domain=TargetDomain.SOFTWARE_ENGINEERING,
+                confidence=0.5,
+                safe_fallback=True,
+                reasoning="Safe fallback routing due to model parsing error",
+                fast_lane=False,
+                swe_sub=SWEComplexityDecision(
+                    complexity=TaskComplexity.MEDIUM,
                     confidence=0.5,
                     safe_fallback=True,
-                    reasoning="Safe fallback routing due to model parsing error",
+                    reasoning="Fallback SE sub-route",
                     fast_lane=False,
-                    swe_sub=SWEComplexityDecision(
-                        complexity=TaskComplexity.MEDIUM,
-                        confidence=0.5,
-                        safe_fallback=True,
-                        reasoning="Fallback SE sub-route",
-                        fast_lane=False,
-                    ),
-                )
-            raise
+                ),
+            )
+        
+        raise last_error
 
     # ----------------------------------------------------------
     # Resilience Execution
@@ -557,6 +561,12 @@ class SmartGateway:
             # Enforce max 3 concurrent requests
             if provider not in self._provider_semaphores:
                 self._provider_semaphores[provider] = asyncio.Semaphore(3)
+            sema = self._provider_semaphores[provider]
+        elif provider in ("gemini", "google"):
+            # Gemini Free Tier allows 15 RPM
+            await self._rate_limiter.acquire("gemini_provider", tokens=1)
+            if provider not in self._provider_semaphores:
+                self._provider_semaphores[provider] = asyncio.Semaphore(2)
             sema = self._provider_semaphores[provider]
         else:
             sema = None

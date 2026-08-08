@@ -162,8 +162,8 @@ class CodePatch(BaseContract):
     workflow_id: str = Field(description="Parent workflow identifier.")
     iteration: int = Field(ge=1, description="Iteration number.")
     files: list[FileContent] = Field(
-        min_length=1,
-        description="Files in this patch (at least one).",
+        default_factory=list,
+        description="Files in this patch (can be empty for informational queries).",
     )
     explanation: str = Field(
         default="",
@@ -415,6 +415,9 @@ class TargetDomain(StrEnum):
     SOFTWARE_ENGINEERING = "software_engineering"
     DEEP_RESEARCH = "deep_research"
     MEDIA_PRODUCTION = "media_production"
+    CONVERSATIONAL = "conversational"
+    SYSTEM_COMMAND = "system_command"
+    OS_COMMAND = "os_command"
 
 
 class TaskComplexity(StrEnum):
@@ -423,6 +426,7 @@ class TaskComplexity(StrEnum):
     SIMPLE = "simple"       # Fast Lane: Coder + Critic only
     MEDIUM = "medium"       # Full SDLC (truncated)
     COMPLEX = "complex"     # Full SDLC (full roster)
+    EXPLORATION = "exploration"  # Explorer only
 
 
 class SWEComplexityDecision(BaseContract):
@@ -710,6 +714,15 @@ class DocsOutput(BaseContract):
 # --- Liaison / Supervisor (no new contracts; use state + events) ---
 
 
+class ProjectExplorationReport(BaseContract):
+    """Output from the Project Explorer Agent for purely informational codebase queries."""
+    
+    task_id: str
+    workflow_id: str
+    answer: str = Field(description="The final comprehensive answer to the user's exploratory query.")
+    files_analyzed: list[str] = Field(default_factory=list, description="List of file paths that were read and analyzed to form the answer.")
+
+
 # ============================================================
 # WorkflowState — State Projection
 # ============================================================
@@ -778,3 +791,6 @@ class WorkflowState(BaseModel):
 
     # Deep Research domain output
     deep_research_report: dict[str, Any] | None = None
+    
+    # Exploration domain output
+    exploration_report: dict[str, Any] | None = None

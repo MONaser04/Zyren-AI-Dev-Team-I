@@ -126,6 +126,9 @@ class GraphState(TypedDict, total=False):
     # Deep Research domain output
     deep_research_report: dict[str, Any]  # ResearchReport
 
+    # Exploration domain output
+    exploration_report: dict[str, Any]  # ProjectExplorationReport
+
     # Event versioning
     event_version: int
     last_event_id: str
@@ -197,6 +200,11 @@ def _coder_node(
     task = TaskAssignment.model_validate(task_data)
     patch = coder.run(task)
 
+    # Record coder's model family for Critic diversity enforcement
+    from gateway.model_registry import BenchmarkRegistry
+    bench_reg = BenchmarkRegistry()
+    coder_model_family = bench_reg.get_family(coder.model)
+
     version = _next_version(state)
     event = code_submitted_event(
         workflow_id=state["workflow_id"],
@@ -211,6 +219,7 @@ def _coder_node(
     return {
         **state,
         "code_patch": patch.model_dump(),
+        "coder_model_family": coder_model_family,
         "event_version": version,
         "last_event_id": event.event_id,
         "rebuttal_used": False,  # Reset per iteration
@@ -249,7 +258,11 @@ def _critic_node(
     """Run the Critic agent and emit a REVIEW_DECIDED event."""
     patch = CodePatch.model_validate(state["code_patch"])
     report = VerificationReport.model_validate(state["verification_report"])
-    decision = critic.run(patch, report)
+
+    # Extract coder's model family for diversity enforcement
+    coder_model_family = state.get("coder_model_family")
+
+    decision = critic.run(patch, report, coder_model_family=coder_model_family)
 
     version = _next_version(state)
     event = review_decided_event(
@@ -478,61 +491,29 @@ def _rebuttal_outcome_router(state: GraphState) -> str:
 # ============================================================
 
 
-def _route_node(
-    state: GraphState, router: "SemanticRouter", event_store: EventStore
+def _supervisor_node(
+    state: GraphState, supervisor: "SupervisorAgent", event_store: "EventStore"
 ) -> dict[str, Any]:
-    """Run the multi-department semantic router and emit a ROUTING_DECIDED event."""
-    from state.events import routing_decided_event  # imported here to avoid circular
-
-    decision = router.classify(
+    """Run the dynamic Supervisor agent."""
+    
+    events_models = event_store.get_events(workflow_id=state["workflow_id"])
+    events = [{"source_node": e.source_node if hasattr(e, "source_node") else "unknown", "message": str(e)} for e in events_models]
+    
+    result = supervisor.run(
         task_description=state["task_description"],
-        workflow_id=state["workflow_id"],
+        events=events,
     )
-
-    version = _next_version(state)
-    event = routing_decided_event(
-        workflow_id=state["workflow_id"],
-        version=version,
-        decision_data=decision.model_dump(mode="json"),
-        causation_id=state.get("last_event_id"),
-        correlation_id=state.get("correlation_id"),
-    )
-    event_store.append(event)
-
-    # Extract SE sub-route fields when available
-    swe_sub_dump = decision.swe_sub.model_dump() if decision.swe_sub else None
-    complexity = (
-        decision.swe_sub.complexity.value if decision.swe_sub else ""
-    )
-
+    
     return {
         **state,
-        "routing_decision": decision.model_dump(),
-        "domain": decision.domain.value,
-        "complexity": complexity,
-        "fast_lane": decision.fast_lane,
-        "swe_sub": swe_sub_dump,
-        "event_version": version,
-        "last_event_id": event.event_id,
+        "routing_decision": {"next_agent": result.data.get("next_agent", "complete")},
+        "feedback": result.data.get("reasoning", ""),
     }
 
-
-def _route_decision(state: GraphState) -> str:
-    """Route to the correct domain lane based on semantic router decision.
-
-    Returns one of:
-        'fast'             — SE domain, simple + high confidence
-        'full'             — SE domain, medium/complex or low confidence
-        'deep_research'    — Deep Research domain
-        'media_production' — Media Production domain
-    """
-    domain = state.get("domain", "software_engineering")
-    if domain == "deep_research":
-        return "deep_research"
-    if domain == "media_production":
-        return "media_production"
-    # Software Engineering sub-routing
-    return "fast" if state.get("fast_lane", False) else "full"
+def _supervisor_decision(state: GraphState) -> str:
+    """Route dynamically based on the supervisor's decision."""
+    decision = state.get("routing_decision", {})
+    return decision.get("next_agent", "complete")
 
 
 def _deep_research_node(
@@ -561,6 +542,29 @@ def _deep_research_node(
         "deep_research_report": report.model_dump(),
         "event_version": version,
         "last_event_id": event.event_id,
+    }
+
+
+def _explorer_node(
+    state: GraphState, agent: "ProjectExplorerAgent", event_store: "EventStore"
+) -> dict[str, Any]:
+    """Run the ProjectExplorerAgent to explore the local codebase."""
+    # We use a custom event or just update state directly for now
+    # For Phase 4 we will just update state
+    report = agent.run(
+        task_description=state["task_description"],
+        task_id=state.get("workflow_id", ""),
+        workflow_id=state.get("workflow_id", ""),
+    )
+    
+    version = _next_version(state)
+    # Using the deep research event as a placeholder since they both produce reports,
+    # or ideally we'd define exploration_completed_event. For simplicity, we just update state.
+    
+    return {
+        **state,
+        "exploration_report": report.model_dump(),
+        "event_version": version,
     }
 
 
@@ -598,7 +602,8 @@ def _planner_node(
     from state.events import task_dag_event
     from contracts.schemas import TaskDAG, ProductRequirementDoc
 
-    prd = ProductRequirementDoc.model_validate(state["product_requirements"])
+    prd_data = state.get("product_requirements", {})
+    prd = ProductRequirementDoc.model_validate(prd_data) if prd_data else ProductRequirementDoc(user_stories=[], acceptance_criteria=[], constraints=[], non_functional=[])
     dag = agent.run(prd)
 
     version = _next_version(state)
@@ -626,8 +631,10 @@ def _architect_node(
     from state.events import architect_design_event
     from contracts.schemas import TaskDAG, ProductRequirementDoc
 
-    dag = TaskDAG.from_stored(state.get("task_dag", {})) if "task_dag" in state else None
-    prd = ProductRequirementDoc.from_stored(state.get("product_requirements", {})) if "product_requirements" in state else None
+    dag_data = state.get("task_dag", {})
+    dag = TaskDAG.from_stored(dag_data) if dag_data else TaskDAG(nodes=[], critical_path=[])
+    prd_data = state.get("product_requirements", {})
+    prd = ProductRequirementDoc.from_stored(prd_data) if prd_data else ProductRequirementDoc(user_stories=[], acceptance_criteria=[], constraints=[], non_functional=[])
     design = agent.run(prd, dag)
     
     version = _next_version(state)
@@ -651,8 +658,10 @@ def _fanout_ux_node(state: GraphState, agent: "UXAgent", event_store: "EventStor
     from state.events import ux_design_event
     from contracts.schemas import ArchitectDesign, ProductRequirementDoc
     
-    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
-    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    arch_data = state.get("architect_design", {})
+    arch = ArchitectDesign.model_validate(arch_data) if arch_data else ArchitectDesign(adrs=[], component_diagram="", tech_choices=[], interfaces=[])
+    prd_data = state.get("product_requirements", {})
+    prd = ProductRequirementDoc.model_validate(prd_data) if prd_data else ProductRequirementDoc(user_stories=[], acceptance_criteria=[], constraints=[], non_functional=[])
     
     design = agent.run(arch, prd)
     
@@ -674,8 +683,10 @@ def _fanout_db_node(state: GraphState, agent: "DBEngineerAgent", event_store: "E
     from state.events import db_schema_event
     from contracts.schemas import ArchitectDesign, TaskDAG
     
-    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
-    dag = TaskDAG.model_validate(state.get("task_dag", {}))
+    arch_data = state.get("architect_design", {})
+    arch = ArchitectDesign.model_validate(arch_data) if arch_data else ArchitectDesign(adrs=[], component_diagram="", tech_choices=[], interfaces=[])
+    dag_data = state.get("task_dag", {})
+    dag = TaskDAG.model_validate(dag_data) if dag_data else TaskDAG(nodes=[], critical_path=[])
     
     schema = agent.run(arch, dag)
     
@@ -719,8 +730,10 @@ def _fanout_researcher_node(state: GraphState, agent: "ResearcherAgent", event_s
     from state.events import research_notes_event
     from contracts.schemas import ArchitectDesign, ProductRequirementDoc
     
-    arch = ArchitectDesign.model_validate(state.get("architect_design", {}))
-    prd = ProductRequirementDoc.model_validate(state.get("product_requirements", {}))
+    arch_data = state.get("architect_design", {})
+    arch = ArchitectDesign.model_validate(arch_data) if arch_data else ArchitectDesign(adrs=[], component_diagram="", tech_choices=[], interfaces=[])
+    prd_data = state.get("product_requirements", {})
+    prd = ProductRequirementDoc.model_validate(prd_data) if prd_data else ProductRequirementDoc(user_stories=[], acceptance_criteria=[], constraints=[], non_functional=[])
     
     notes = agent.run(prd, arch)
     
@@ -800,7 +813,7 @@ def _integrator_node(
 def _docs_arch_node(state: GraphState, agent: "DocsAgent", event_store: "EventStore") -> dict[str, Any]:
     from state.events import documentation_event
     
-    out = agent.run(state, phase="architecture")
+    out = agent.run(milestone="post_architecture", context=state)
     
     version = _next_version(state)
     event = documentation_event(
@@ -822,7 +835,7 @@ def _docs_arch_node(state: GraphState, agent: "DocsAgent", event_store: "EventSt
 def _docs_int_node(state: GraphState, agent: "DocsAgent", event_store: "EventStore") -> dict[str, Any]:
     from state.events import documentation_event
     
-    out = agent.run(state, phase="integration")
+    out = agent.run(milestone="post_integration", context=state)
     
     version = _next_version(state)
     event = documentation_event(
@@ -928,7 +941,7 @@ def build_feedback_loop(
     from agents.coder import CoderAgent
     from agents.tester import TesterAgent
     from agents.critic import CriticAgent
-    from orchestrator.semantic_router import SemanticRouter
+    from agents.supervisor import SupervisorAgent
     from agents.product_analyst import ProductAnalystAgent
     from agents.planner import PlannerAgent
     from agents.architect import ArchitectAgent
@@ -939,12 +952,13 @@ def build_feedback_loop(
     from agents.integrator import IntegratorAgent
     from agents.docs import DocsAgent
     from agents.deep_research import DeepResearchAgent
+    from agents.explorer import ProjectExplorerAgent
 
     coder = CoderAgent(agent_id="c1", llm_client=llm_client)
     tester = TesterAgent(agent_id="t1")
     critic = CriticAgent(agent_id="cr1", llm_client=llm_client)
     
-    router = SemanticRouter(llm_client=llm_client)
+    supervisor = SupervisorAgent(agent_id="sup1", llm_client=llm_client)
     pa = ProductAnalystAgent(agent_id="pa1", llm_client=llm_client)
     planner = PlannerAgent(agent_id="pl1", llm_client=llm_client)
     arch = ArchitectAgent(agent_id="ar1", llm_client=llm_client)
@@ -968,6 +982,11 @@ def build_feedback_loop(
         mcp_registry=mcp_reg,
         tool_executor=tool_executor
     )
+    
+    explorer = ProjectExplorerAgent(
+        llm_client=llm_client,
+        agent_id="exp1"
+    )
 
     # Create default HITL manager if none provided (auto-approve = no-op)
     if hitl_manager is None:
@@ -988,7 +1007,7 @@ def build_feedback_loop(
     workflow.add_node("fail", partial(_fail_node, event_store=event_store))
 
     # Routing + Full SDLC nodes
-    workflow.add_node("route", partial(_route_node, router=router, event_store=event_store))
+    workflow.add_node("supervisor", partial(_supervisor_node, supervisor=supervisor, event_store=event_store))
     workflow.add_node("product_analyst", partial(_product_analyst_node, agent=pa, event_store=event_store))
     workflow.add_node("planner", partial(_planner_node, agent=planner, event_store=event_store))
     workflow.add_node("architect", partial(_architect_node, agent=arch, event_store=event_store))
@@ -1013,88 +1032,116 @@ def build_feedback_loop(
 
     workflow.set_entry_point("assign_task")
     
-    workflow.add_edge("assign_task", "route")
-    # Deep Research domain node
+    workflow.add_edge("assign_task", "supervisor")
     workflow.add_node("deep_research_entry", partial(_deep_research_node, agent=deep_res, event_store=event_store))
+    # Explorer node
+    workflow.add_node("explorer_entry", partial(_explorer_node, agent=explorer, event_store=event_store))
     # Placeholder terminal node for Media Production
     workflow.add_node("media_production_entry", lambda s: {**s, "domain": "media_production"})
 
+    # New domains mapping directly to complete node with some basic text output
+    def _conversational_node(s):
+        from gateway.llm_client import LLMClient
+        client = LLMClient()
+        response = client.complete_text(
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant in an autonomous software development agency. Respond conversationally to the user."},
+                {"role": "user", "content": s.get("task_description", "")}
+            ],
+            model="fast"
+        )
+        return {**s, "domain": "conversational", "code_patch": {"explanation": response.strip()}}
+
+    def _os_command_node(s):
+        import asyncio
+        from agents.operator import OperatorAgent
+        from gateway.model_registry import get_registry
+        from resilience import CircuitBreakerRegistry
+        from gateway.smart_gateway import SmartGateway
+        from contracts.system_commands import SystemCommandIntent, SystemAction
+        
+        registry = get_registry()
+        circuit_breakers = CircuitBreakerRegistry()
+        gateway = SmartGateway(registry, circuit_breakers)
+        op = OperatorAgent(registry=registry, gateway=gateway, circuit_breakers=circuit_breakers)
+        
+        intent = SystemCommandIntent(
+            action=SystemAction.OS_COMMAND,
+            raw_text=s.get("task_description", "")
+        )
+        res = asyncio.run(op._execute_os_command(intent))
+        return {**s, "domain": "os_command", "code_patch": {"explanation": res.message}}
+
+    def _system_command_node(s):
+        import asyncio
+        from agents.operator import OperatorAgent
+        from gateway.model_registry import get_registry
+        from resilience import CircuitBreakerRegistry
+        from gateway.smart_gateway import SmartGateway
+        from contracts.system_commands import SystemCommandParser
+        
+        registry = get_registry()
+        circuit_breakers = CircuitBreakerRegistry()
+        gateway = SmartGateway(registry, circuit_breakers)
+        op = OperatorAgent(registry=registry, gateway=gateway, circuit_breakers=circuit_breakers)
+        
+        parser = SystemCommandParser()
+        intent = parser.parse(s.get("task_description", ""))
+        
+        if intent.action == "unknown":
+            msg = "System Commands via SemanticRouter are logged and handled. Please be more specific about the system configuration command."
+        else:
+            res = asyncio.run(op.execute_intent(intent))
+            msg = res.message
+            
+        return {**s, "domain": "system_command", "code_patch": {"explanation": msg}}
+
+    workflow.add_node("conversational_entry", _conversational_node)
+    workflow.add_node("os_command_entry", _os_command_node)
+    workflow.add_node("system_command_entry", _system_command_node)
+
     workflow.add_conditional_edges(
-        "route",
-        _route_decision,
+        "supervisor",
+        _supervisor_decision,
         {
-            "fast": "coder",
-            "full": "product_analyst",
-            "deep_research": "deep_research_entry",
-            "media_production": "media_production_entry",
+            "planner": "planner",
+            "architect": "architect",
+            "ux": "ux",
+            "db": "db",
+            "security": "security",
+            "coder": "coder",
+            "tester": "tester",
+            "critic": "critic",
+            "integrator": "integrator",
+            "docs": "docs_int",
+            "complete": "complete",
+            "fail": "fail"
         },
     )
 
-    # New domain entry points route to complete for now;
-    # downstream pipeline nodes will be wired here.
+    # Star Topology: all workers return to the supervisor!
+    workflow.add_edge("planner", "supervisor")
+    workflow.add_edge("architect", "supervisor")
+    workflow.add_edge("ux", "supervisor")
+    workflow.add_edge("db", "supervisor")
+    workflow.add_edge("security", "supervisor")
+    workflow.add_edge("coder", "supervisor")
+    workflow.add_edge("tester", "supervisor")
+    workflow.add_edge("critic", "supervisor")
+    workflow.add_edge("integrator", "supervisor")
+    workflow.add_edge("docs_int", "supervisor")
+    
+    # Legacy domains returning to supervisor or complete
     workflow.add_edge("deep_research_entry", "complete")
     workflow.add_edge("media_production_entry", "complete")
+    workflow.add_edge("explorer_entry", "complete")
+    workflow.add_edge("conversational_entry", "complete")
+    workflow.add_edge("os_command_entry", "complete")
+    workflow.add_edge("system_command_entry", "complete")
 
-    # Fast lane: coder → tester → hitl_post_test → critic
-    workflow.add_edge("coder", "tester")
-    workflow.add_edge("tester", "hitl_post_test")
-    workflow.add_edge("hitl_post_test", "critic")
-    workflow.add_conditional_edges(
-        "critic",
-        _should_continue,
-        {
-            "complete": "complete",
-            "docs_int": "docs_int",
-            "should_rebut": "coder_rebut",
-            "fail": "fail"
-        }
-    )
-    workflow.add_conditional_edges(
-        "coder_rebut",
-        _should_rebut_router,
-        {
-            "try_rebut": "judge_rebuttal",
-            "no_rebut": "increment"
-        }
-    )
-    workflow.add_conditional_edges(
-        "judge_rebuttal",
-        _rebuttal_outcome_router,
-        {
-            "accepted_fast": "complete",
-            "accepted_full": "docs_int",
-            "rejected": "increment"
-        }
-    )
-    workflow.add_edge("increment", "coder")
-    
+    # Complete and Fail end the workflow
     workflow.add_edge("complete", END)
     workflow.add_edge("fail", END)
-
-    # Full SDLC path
-    workflow.add_edge("product_analyst", "planner")
-    workflow.add_edge("planner", "architect")
-    
-    # Fan-out from architect (parallel)
-    workflow.add_edge("architect", "ux")
-    workflow.add_edge("architect", "db")
-    workflow.add_edge("architect", "security")
-    workflow.add_edge("architect", "researcher")
-    workflow.add_edge("architect", "hitl_pre_code")  # HITL gate before coding
-
-    # HITL pre-code feeds into coder
-    workflow.add_edge("hitl_pre_code", "coder_sdlc")
-
-    # Security fan-out goes through HITL security review
-    workflow.add_edge("security", "hitl_security")
-
-    # Fan-in: all parallel branches → integrator
-    workflow.add_edge(["ux", "db", "hitl_security", "researcher", "coder_sdlc"], "integrator")
-    
-    workflow.add_edge("integrator", "docs_arch")
-    workflow.add_edge("docs_arch", "tester")
-    
-    workflow.add_edge("docs_int", "complete")
 
     return workflow
 

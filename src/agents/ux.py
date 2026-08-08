@@ -44,7 +44,7 @@ class UXAgent(BaseAgent):
         return self.llm_client.complete_structured(
             messages=[{"role": "user", "content": prompt}],
             response_model=UXDesign,
-            model=self.model,
+            complexity="complex",
             temperature=0.1,
         )
 

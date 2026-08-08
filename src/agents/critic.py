@@ -124,12 +124,15 @@ class CriticAgent(BaseAgent):
         self,
         patch: CodePatch,
         report: VerificationReport,
+        coder_model_family: str | None = None,
     ) -> ReviewDecision:
         """Review a code patch using verification signals.
 
         Args:
             patch: The code that was verified.
             report: Factual verification results from the Tester.
+            coder_model_family: Optional family name of the model used by the Coder,
+                                to enforce diversity (Critic should use a different family).
 
         Returns:
             A ReviewDecision — PASS or BLOCK with feedback.
@@ -137,14 +140,15 @@ class CriticAgent(BaseAgent):
         escalation = self._get_escalation_level(patch.iteration)
 
         self.logger.info(
-            "Reviewing: task=%s, iteration=%d, all_clean=%s, escalation=%s",
+            "Reviewing: task=%s, iteration=%d, all_clean=%s, escalation=%s, exclude_family=%s",
             patch.task_id,
             patch.iteration,
             report.all_clean,
             escalation.value,
+            coder_model_family or "none",
         )
 
-        return self._review_with_llm(patch, report, escalation)
+        return self._review_with_llm(patch, report, escalation, coder_model_family)
 
     @trace_agent_invocation(agent_role="judge_rebuttal")
 
@@ -180,7 +184,7 @@ class CriticAgent(BaseAgent):
         ]
 
         result = self.llm_client.complete_structured(
-            model=self.model,
+            complexity="complex",
             messages=messages,
             response_model=_RebuttalJudgeResponse,
         )
@@ -220,6 +224,7 @@ class CriticAgent(BaseAgent):
         patch: CodePatch,
         report: VerificationReport,
         escalation: EscalationLevel,
+        coder_model_family: str | None = None,
     ) -> ReviewDecision:
         """Use the critic model to review code with verification context."""
         system_prompt = _build_critic_system_prompt(escalation)
@@ -230,10 +235,16 @@ class CriticAgent(BaseAgent):
             {"role": "user", "content": user_prompt},
         ]
 
+        # Build metadata with optional family diversity enforcement
+        metadata = {}
+        if coder_model_family:
+            metadata["exclude_family"] = coder_model_family
+
         result = self.llm_client.complete_structured(
-            model=self.model,
+            complexity="complex",
             messages=messages,
             response_model=_CriticResponse,
+            metadata=metadata,
         )
 
         issues = [

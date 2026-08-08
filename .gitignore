@@ -1,3 +1,7 @@
+# ============================================================
+# AI Dev-Team — .gitignore
+# ============================================================
+
 # === Python ===
 __pycache__/
 *.py[cod]
@@ -14,7 +18,7 @@ build/
 venv/
 ENV/
 
-# === Environment Variables ===
+# === Environment Variables (API KEYS — NEVER COMMIT) ===
 .env
 .env.local
 .env.*.local
@@ -42,21 +46,47 @@ docker-volumes/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # === uv ===
-# uv.lock is committed for reproducibility
+# uv.lock IS committed for reproducibility
 
-# === Misc ===
+# === Logs ===
 *.log
+
+# === Temporary / Backup ===
 *.bak
 *.tmp
+*.orig
 
-# === AI Agents & Generated Files ===
-memory.json
+# === AI Agents — Runtime Data (NEVER COMMIT) ===
+# Workflow artifacts (generated per-run)
+artifacts/
+
+# Optimization reports (generated per-run)
+reports/
+
+# Databases (local state, not portable)
+*.db
+*.sqlite
+
+# Deep research outputs (generated per-query)
 deep_research_data.csv
 deep_research_report.json
 deep_research_report.md
-artifacts/
-reports/
-*.db
-*.sqlite
+
+# Working memory (ephemeral per-session)
+memory.json
+
+# === Bayesian Routing — Runtime State (PERSONAL MODEL SCORES) ===
+src/gateway/bayesian_state.json
+
+# === Model Benchmarks — Runtime Data ===
+src/gateway/model_benchmarks.json
+
+# === Optimization — Local Feedback History ===
+optim/feedback.db
+optim/*.sqlite
+
+# === Agents config ===
+.agents/

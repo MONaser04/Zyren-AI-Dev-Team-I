@@ -1,9 +1,0 @@
-Workflow: 73b567e3f1ca483e
-Events: 6
-
-  [2026-07-11 04:25:20.875999+00:00] task_created
-  [2026-07-11 04:25:36.782880+00:00] routing_decided
-  [2026-07-11 04:25:42.593251+00:00] code_submitted
-  [2026-07-11 04:25:55.774935+00:00] verification_completed
-  [2026-07-11 04:30:13.375244+00:00] review_decided
-  [2026-07-11 04:30:13.376893+00:00] workflow_completed

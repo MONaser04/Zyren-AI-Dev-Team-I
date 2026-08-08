@@ -1,9 +1,0 @@
-Workflow: c0aa5707f5f24278
-Events: 6
-
-  [2026-07-10 11:05:47.591570+00:00] task_created
-  [2026-07-10 11:05:54.093807+00:00] routing_decided
-  [2026-07-10 11:06:01.792897+00:00] code_submitted
-  [2026-07-10 11:06:06.608538+00:00] verification_completed
-  [2026-07-10 11:06:20.969570+00:00] review_decided
-  [2026-07-10 11:06:20.971493+00:00] workflow_completed

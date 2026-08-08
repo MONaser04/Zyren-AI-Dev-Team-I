@@ -12,7 +12,15 @@ from __future__ import annotations
 
 import os
 import sys
+import logging
 from pathlib import Path
+
+# Enable INFO logging so the user can see Router model selections
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S"
+)
 
 # Automatically add src directory to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -287,6 +295,9 @@ def run_single_task(task_description: str, session_messages: list = None, liaiso
         
         if result_workflow.error:
             print(f"\n❌ Error Details: {result_workflow.error}")
+            
+        if result_workflow.explanation:
+            print(f"\n💬 Agent Reply:\n{result_workflow.explanation}")
 
         # Inject pipeline results into session memory
         session_messages.append({"role": "user", "content": task_description})
@@ -343,6 +354,43 @@ def interactive_loop() -> None:
             if user_input.lower() in ("exit", "quit", "q"):
                 print("👋 Goodbye!")
                 break
+                
+            if user_input.lower() == "calibrate":
+                print("⏳ Running calibration queue synchronously. This will process all pending model evaluations...")
+                import asyncio
+                from gateway.routing.calibration_engine import CalibrationEngine
+                
+                async def run_sync_calibration():
+                    engine = CalibrationEngine._instance
+                    if not engine:
+                        print("❌ Calibration Engine not found.")
+                        return
+                        
+                    if not engine._worker_task or engine._worker_task.done():
+                        engine._worker_task = asyncio.create_task(engine._worker_loop())
+                        
+                    all_models = engine.registry.list_all()
+                    print(f"📥 Enqueueing all {len(all_models)} models for evaluation...")
+                    for model in all_models:
+                        engine.enqueue(model.model_id)
+                        
+                    while not engine.queue.empty():
+                        print(f"⏳ Waiting for calibration tasks to complete... {engine.queue.qsize()} remaining.")
+                        await asyncio.sleep(10)
+                        
+                    print("✅ All pending calibration tasks completed!")
+                    
+                asyncio.run(run_sync_calibration())
+                continue
+
+            # Intercept voice chat commands
+            voice_triggers = ["voice", "voice chat", "افتح الvoice chat", "start voice", "افتح الفويس"]
+            if any(trigger in user_input.lower() for trigger in voice_triggers):
+                print("🎤 Starting Voice Agent Spokesperson...")
+                import asyncio
+                from agents.voice_agent import main as voice_main
+                asyncio.run(voice_main())
+                continue
 
             run_single_task(user_input, session_messages, liaison=liaison)
 
@@ -353,6 +401,13 @@ def interactive_loop() -> None:
 
 def main() -> None:
     if len(sys.argv) > 1:
+        if sys.argv[1].lower() == "voice":
+            print("🎤 Starting Voice Agent Spokesperson...")
+            import asyncio
+            from agents.voice_agent import main as voice_main
+            asyncio.run(voice_main())
+            return
+            
         # CLI Argument provided: python main.py "Write a fibonacci function"
         task = " ".join(sys.argv[1:])
         run_single_task(task)
