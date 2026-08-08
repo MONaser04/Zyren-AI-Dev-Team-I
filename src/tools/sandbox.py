@@ -77,7 +77,7 @@ class SandboxProvider:
             workspace_root: Optional pre-existing workspace directory.
                             If None, a temp dir is created.
         """
-        self._root = Path(workspace_root) if workspace_root else Path(tempfile.mkdtemp(prefix="aidev_sandbox_"))
+        self._root = Path(workspace_root) if workspace_root else Path(tempfile.mkdtemp(prefix="zyren_sandbox_"))
         self._is_temp = workspace_root is None
         logger.info("Sandbox workspace: %s", self._root)
 
@@ -191,7 +191,7 @@ class SandboxProvider:
 
         Writes the script to a temp file and executes it.
         """
-        script_path = self._root / "_aidev_script.py"
+        script_path = self._root / "_zyren_script.py"
         script_path.write_text(script, encoding="utf-8")
         return self.run_command(["python", str(script_path)], timeout=timeout)
 
@@ -280,7 +280,7 @@ class DockerSandboxProvider(SandboxProvider):
         timeout: int = 30,
     ) -> SandboxResult:
         """Run Python code in a hardened Docker container."""
-        script_path = self._root / "_aidev_script.py"
+        script_path = self._root / "_zyren_script.py"
         script_path.write_text(script, encoding="utf-8")
         # Make writable copy in /tmp
         docker_cmd = [
@@ -290,7 +290,7 @@ class DockerSandboxProvider(SandboxProvider):
             "--tmpfs=/tmp:rw,noexec,nosuid,size=256M",
             "-w", "/workspace",
             self._image,
-            "python", "/workspace/_aidev_script.py",
+            "python", "/workspace/_zyren_script.py",
         ]
 
         try:

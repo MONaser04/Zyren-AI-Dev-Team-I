@@ -1,7 +1,7 @@
 """
 Phase 7 Final — E2E Integration Tests
 ======================================
-Complete end-to-end validation of the AI Dev Team pipeline.
+Complete end-to-end validation of the Zyren pipeline.
 Part 1: Test Suite Structure & Configuration
 """
 from __future__ import annotations
@@ -63,7 +63,7 @@ class E2ETestResult:
 # ============================================================
 
 class E2ETestSuite:
-    """Complete end-to-end test suite for AI Dev Team."""
+    """Complete end-to-end test suite for Zyren."""
 
     def __init__(self, cost_cap_usd: float = 5.0):
         self.cost_cap_usd = cost_cap_usd

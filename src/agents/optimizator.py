@@ -146,7 +146,7 @@ class SupervisorAgent(BaseAgent):
     """Phase 5 Supervisor — manages the closed-loop optimisation cycle.
 
     Workflow per round:
-      1. EVALUATE  : Run golden tasks through the full AI Dev Team pipeline
+      1. EVALUATE  : Run golden tasks through the full Zyren pipeline
       2. ANALYSE   : Analyse feedback, identify weaknesses
       3. OPTIMISE  : Tune prompts, switch models as needed
       4. CONVERGE  : Check if scores have plateaued

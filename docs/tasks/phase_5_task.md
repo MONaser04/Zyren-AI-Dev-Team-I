@@ -1,7 +1,7 @@
 # Phase 5 Implementation Tasks
 
 ## Overview
-Closed-Loop Self-Improvement for AI Dev Team — Supervisor orchestrates Evaluate → Analyse → Optimise → Converge cycle.
+Closed-Loop Self-Improvement for Zyren — Supervisor orchestrates Evaluate → Analyse → Optimise → Converge cycle.
 
 ---
 

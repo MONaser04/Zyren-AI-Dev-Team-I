@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 5 introduces the **Supervisor Agent** — a meta-agent that orchestrates a closed-loop self-improvement cycle for the entire AI Dev Team. The Supervisor continuously evaluates the team's performance, analyses weaknesses, optimises prompts and model routing, and repeats until convergence or budget exhaustion.
+Phase 5 introduces the **Supervisor Agent** — a meta-agent that orchestrates a closed-loop self-improvement cycle for the entire Zyren. The Supervisor continuously evaluates the team's performance, analyses weaknesses, optimises prompts and model routing, and repeats until convergence or budget exhaustion.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ Phase 5 introduces the **Supervisor Agent** — a meta-agent that orchestrates a
 
 ### Loop Steps
 
-1. **EVALUATE** — Run Golden Set tasks through the full AI Dev Team pipeline
+1. **EVALUATE** — Run Golden Set tasks through the full Zyren pipeline
 2. **ANALYSE** — Process feedback, identify patterns, find weaknesses
 3. **OPTIMISE** — Tune prompts (DSPy-style) and adjust model routing
 4. **CONVERGE** — Check if scores have plateaued; if not, repeat

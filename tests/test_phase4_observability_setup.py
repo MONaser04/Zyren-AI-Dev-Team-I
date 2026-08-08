@@ -56,7 +56,7 @@ class TestTracingSetup:
     def test_tracing_config_defaults(self) -> None:
         """TracingConfig has correct defaults per README §4.1."""
         config = TracingConfig()
-        assert config.service_name == "ai-dev-team"
+        assert config.service_name == "zyren"
         assert config.otlp_endpoint == "http://localhost:4318"
         assert config.capture_prompts is False  # privacy OFF by default
 

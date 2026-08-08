@@ -19,7 +19,7 @@ from orchestrator.runner import run_workflow
 def main():
     task = "Write a Python function that calculates the Fibonacci sequence up to N, along with a comprehensive pytest suite."
     
-    print("Starting AI Dev-Team Workflow...")
+    print("Starting Zyren Workflow...")
     
     # تشغيل النظام (سيبدأ Orchestrator بتوجيه المهمة للـ Coder والـ Tester والـ Critic)
     result = run_workflow(

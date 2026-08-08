@@ -53,7 +53,7 @@ def trace_agent_invocation(agent_role: str) -> Callable[[F], F]:
             span_name = SPAN_INVOKE_AGENT.format(role=agent_role)
             with tracer.start_as_current_span(span_name) as span:
                 span.set_attribute(GEN_AI_AGENT_ROLE, agent_role)
-                span.set_attribute(GEN_AI_SYSTEM, "ai-dev-team")
+                span.set_attribute(GEN_AI_SYSTEM, "zyren")
                 # workflow_id and iteration pulled from kwargs if present
                 wf = kwargs.get("workflow_id") or (
                     getattr(args[0], "workflow_id", "") if args else ""

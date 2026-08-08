@@ -21,7 +21,7 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-_meter_name = "ai-dev-team.genai"
+_meter_name = "zyren.genai"
 _initialized = False
 _meter: metrics.Meter | None = None
 

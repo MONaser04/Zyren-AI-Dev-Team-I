@@ -1,6 +1,6 @@
 # Phase 6 Walkthrough: Comprehensive Evaluation Framework
 
-A step-by-step guide to running and understanding the Phase 6 evaluation suite for AI Dev Team.
+A step-by-step guide to running and understanding the Phase 6 evaluation suite for Zyren.
 
 ---
 
@@ -281,14 +281,14 @@ Human-readable summary with tables:
 ### Docker
 ```bash
 # Build test image (slim)
-docker build -f Dockerfile.eval --target phase6-test -t ai-dev-team:phase6-test .
+docker build -f Dockerfile.eval --target phase6-test -t zyren:phase6-test .
 
 # Run tests in container
-docker run --rm ai-dev-team:phase6-test
+docker run --rm zyren:phase6-test
 
 # Build full eval image (with PyRIT + garak)
-docker build -f Dockerfile.eval --target phase6-full -t ai-dev-team:phase6-full .
-docker run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY ai-dev-team:phase6-full
+docker build -f Dockerfile.eval --target phase6-full -t zyren:phase6-full .
+docker run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY zyren:phase6-full
 ```
 
 ### GitHub Actions

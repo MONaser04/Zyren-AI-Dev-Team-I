@@ -1,2 +1,2 @@
 # Tests package
-"""Test suite for AI Dev-Team."""
+"""Test suite for Zyren."""

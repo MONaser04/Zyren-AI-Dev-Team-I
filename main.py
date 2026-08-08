@@ -1,5 +1,5 @@
 """
-AI Dev-Team — Interactive & CLI Main Entry Point
+Zyren — Interactive & CLI Main Entry Point
 =================================================
 Run this file to interact directly with your AI Software Agency.
 
@@ -254,7 +254,7 @@ def run_single_task(task_description: str, session_messages: list = None, liaiso
 
     # ── Full pipeline for complex tasks (or fast-path fallback) ──
     print("\n" + "=" * 65)
-    print(f"🚀 Running AI Dev-Team Pipeline")
+    print(f"🚀 Running Zyren Pipeline")
     print(f"📋 Task: {task_description}")
     print("=" * 65 + "\n")
 
@@ -331,9 +331,9 @@ def run_single_task(task_description: str, session_messages: list = None, liaiso
 
 
 def interactive_loop() -> None:
-    """Interactive loop for chatting/submitting tasks to the AI Dev-Team."""
+    """Interactive loop for chatting/submitting tasks to the Zyren."""
     print("=" * 65)
-    print("🤖 Welcome to AI Dev-Team Autonomous Agency!")
+    print("🤖 Welcome to Zyren!")
     print("Type your coding request below (or 'exit' / 'q' to quit).")
     print("=" * 65)
 

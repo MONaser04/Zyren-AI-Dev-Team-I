@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# 🤖 AI Dev-Team
+# 🤖 Zyren: Autonomous AI Dev-Team
 
 ### The Autonomous Multi-Agent Software Engineering System
 
@@ -26,7 +26,7 @@
 
 ## 📖 Overview
 
-**AI Dev-Team** is an autonomous software engineering agency powered by a team of **17 specialized AI agents** coordinated through a **LangGraph star-topology state machine**. A central **Supervisor agent** dynamically routes tasks to the right specialist — planner, architect, coder, tester, critic, security auditor, researcher, and more — creating a complete software development lifecycle in a single command.
+**Zyren** is an autonomous software engineering agency powered by a team of **17 specialized AI agents** coordinated through a **LangGraph star-topology state machine**. A central **Supervisor agent** dynamically routes tasks to the right specialist — planner, architect, coder, tester, critic, security auditor, researcher, and more — creating a complete software development lifecycle in a single command.
 
 ### Core Design Principles
 
@@ -120,7 +120,7 @@ graph TD
 
 ### Orchestration: Supervisor Star Topology
 
-Unlike a static pipeline, AI Dev-Team uses a **dynamic star topology**: every specialist agent routes back to the Supervisor after completing its work. The Supervisor — powered by an LLM — analyzes the full execution history and decides the **next best agent** to call:
+Unlike a static pipeline, Zyren uses a **dynamic star topology**: every specialist agent routes back to the Supervisor after completing its work. The Supervisor — powered by an LLM — analyzes the full execution history and decides the **next best agent** to call:
 
 ```
 assign_task → Supervisor → [planner|architect|coder|tester|critic|...] → Supervisor → ... → complete
@@ -275,8 +275,8 @@ Each adapter implements the `ProviderAdapter` interface and registers with the `
 
 ```bash
 # Clone the repository
-git clone https://github.com/MONaser04/ai-dev-team.git
-cd ai-dev-team
+git clone https://github.com/MONaser04/zyren.git
+cd zyren
 
 # Install dependencies
 uv sync
@@ -445,7 +445,7 @@ Closed-loop optimization pipeline:
 ## 📂 Repository Structure
 
 ```text
-ai-dev-team/                          # 19,597 lines · 100 Python files
+zyren/                          # 19,597 lines · 100 Python files
 ├── main.py                           # Interactive CLI + one-liner + voice mode
 ├── pyproject.toml                    # uv/hatch, Python ≥3.11, pinned deps
 ├── Makefile                          # install · test · lint · format · typecheck · up · down · eval

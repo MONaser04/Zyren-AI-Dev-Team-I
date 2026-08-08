@@ -75,7 +75,7 @@ class VerificationRunner:
             len(self.steps),
         )
 
-        with tempfile.TemporaryDirectory(prefix="aidev_verify_") as tmp_dir:
+        with tempfile.TemporaryDirectory(prefix="zyren_verify_") as tmp_dir:
             tmp_path = Path(tmp_dir)
 
             # Write all files

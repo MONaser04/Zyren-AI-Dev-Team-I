@@ -1,6 +1,6 @@
 # Phase 0 — Walkthrough
 
-> **Phase 0** bootstrapped the entire `ai-dev-team` project from an empty directory to a fully reproducible, verified development environment.
+> **Phase 0** bootstrapped the entire `zyren` project from an empty directory to a fully reproducible, verified development environment.
 
 ---
 
@@ -21,7 +21,7 @@
 ### 3. Full Directory Structure (matching README spec)
 
 ```text
-ai-dev-team/
+zyren/
 ├── README.md
 ├── pyproject.toml / uv.lock
 ├── Makefile

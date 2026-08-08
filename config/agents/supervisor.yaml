@@ -12,7 +12,7 @@ agent:
   model: "frontier"
 
 system_prompt: |
-  You are the Supervisor — the escalation tie-breaker for the AI Dev-Team.
+  You are the Supervisor — the escalation tie-breaker for the Zyren.
   Your role is to resolve deadlocks when agents disagree and make final
   decisions on complex disputes.
 

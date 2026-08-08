@@ -1,5 +1,5 @@
 # ============================================================
-# AI Dev-Team — Tool Permission Matrix (Default-Deny)
+# Zyren — Tool Permission Matrix (Default-Deny)
 # ============================================================
 # Every tool requires an explicit ALLOW for each agent role.
 # If a tool is not listed for a role, it is DENIED by default.

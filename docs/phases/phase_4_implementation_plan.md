@@ -225,14 +225,14 @@ SPAN_CHAT = "chat"
 SPAN_EXECUTE_TOOL = "execute_tool.{name}"
 SPAN_WORKFLOW = "workflow.{workflow_id}"
 
-_TRACER_NAME = "ai-dev-team.genai"
+_TRACER_NAME = "zyren.genai"
 _initialized = False
 
 
 @dataclass(frozen=True)
 class TracingConfig:
     """Configuration for the OTel tracer."""
-    service_name: str = "ai-dev-team"
+    service_name: str = "zyren"
     otlp_endpoint: str = "http://localhost:4318"  # OTLP HTTP default
     capture_prompts: bool = False  # privacy: OFF by default (README §4.1)
 
@@ -291,7 +291,7 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-_meter_name = "ai-dev-team.genai"
+_meter_name = "zyren.genai"
 _initialized = False
 _meter: metrics.Meter | None = None
 

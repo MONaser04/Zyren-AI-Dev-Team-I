@@ -1,7 +1,7 @@
 [project]
-name = "ai-dev-team"
+name = "zyren"
 version = "0.1.0"
-description = "A Multi-Agent SDLC Engine — self-hosted AI dev team with grounded verification"
+description = "A Multi-Agent SDLC Engine — self-hosted Zyren team with grounded verification"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"

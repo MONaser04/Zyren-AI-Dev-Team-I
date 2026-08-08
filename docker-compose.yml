@@ -1,5 +1,5 @@
 # ============================================================
-# AI Dev-Team — Docker Compose (Local Development)
+# Zyren — Docker Compose (Local Development)
 # ============================================================
 # Services:
 #   1. Postgres 16    — Event-sourced state store
@@ -19,18 +19,18 @@ services:
   # ----------------------------------------------------------
   postgres:
     image: postgres:16-alpine
-    container_name: aidev-postgres
+    container_name: zyren-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-aidev}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aidev_local}
-      POSTGRES_DB: ${POSTGRES_DB:-aidev_state}
+      POSTGRES_USER: ${POSTGRES_USER:-zyren}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zyren_local}
+      POSTGRES_DB: ${POSTGRES_DB:-zyren_state}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aidev}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zyren}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
   # ----------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: aidev-qdrant
+    container_name: zyren-qdrant
     restart: unless-stopped
     ports:
       - "${QDRANT_REST_PORT:-6333}:6333"     # REST API
@@ -58,7 +58,7 @@ services:
   # ----------------------------------------------------------
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
-    container_name: aidev-litellm
+    container_name: zyren-litellm
     restart: unless-stopped
     ports:
       - "${LITELLM_PORT:-4000}:4000"
@@ -79,7 +79,7 @@ services:
   # ----------------------------------------------------------
   jaeger:
     image: jaegertracing/jaeger:latest
-    container_name: aidev-jaeger
+    container_name: zyren-jaeger
     restart: unless-stopped
     ports:
       - "${JAEGER_UI_PORT:-16686}:16686"     # Jaeger UI
@@ -93,12 +93,12 @@ services:
   # ----------------------------------------------------------
   langfuse:
     image: langfuse/langfuse:latest
-    container_name: aidev-langfuse
+    container_name: zyren-langfuse
     restart: unless-stopped
     ports:
       - "${LANGFUSE_PORT:-3000}:3000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-aidev}:${POSTGRES_PASSWORD:-aidev_local}@postgres:5432/${POSTGRES_DB:-aidev_state}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-zyren}:${POSTGRES_PASSWORD:-zyren_local}@postgres:5432/${POSTGRES_DB:-zyren_state}
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${LANGFUSE_SECRET:-langfuse-local-secret}
       - SALT=${LANGFUSE_SALT:-langfuse-local-salt}
