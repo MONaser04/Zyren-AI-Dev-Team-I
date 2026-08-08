@@ -2,7 +2,7 @@
 """
 SWE-bench Lite — Evaluation Harness Runner
 ===========================================
-Runs the SWE-bench Lite evaluation harness against the Zyren.
+Runs the SWE-bench Lite evaluation harness against the Zyren AI Dev-Team.
 
 This integrates with the official SWE-bench evaluation framework
 to measure % Resolved on real GitHub issues.

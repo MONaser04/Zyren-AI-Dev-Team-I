@@ -1,5 +1,5 @@
 # ============================================================
-# Zyren — LiteLLM Configuration
+# Zyren AI Dev-Team — LiteLLM Configuration
 # ============================================================
 # Model registry, routing rules, fallback chains, and cost caps.
 # Docs: https://docs.litellm.ai/docs/proxy/configs

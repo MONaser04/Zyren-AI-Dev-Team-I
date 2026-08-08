@@ -1,6 +1,6 @@
 # 🎯 Golden Task Set — Evaluation Harness
 
-> **Purpose:** A curated set of 10–20 coding tasks that serve as the **day-one benchmark** for the Zyren system. Every new component must improve performance on these tasks — or be cut.
+> **Purpose:** A curated set of 10–20 coding tasks that serve as the **day-one benchmark** for the Zyren AI Dev-Team system. Every new component must improve performance on these tasks — or be cut.
 
 ## Why Golden Tasks?
 

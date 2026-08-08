@@ -1,7 +1,7 @@
 """
 SWE-bench Verified Harness — Phase 7
 =====================================
-Runs Zyren on SWE-bench Verified instances.
+Runs Zyren AI Dev-Team on SWE-bench Verified instances.
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class SWEBenchResult:
 
 
 class SWEBenchHarness:
-    """Evaluates SWE-bench Verified instances through the Zyren."""
+    """Evaluates SWE-bench Verified instances through the Zyren AI Dev-Team."""
 
     def __init__(
         self,
@@ -191,7 +191,7 @@ class SWEBenchHarness:
                 )
 
     def _build_task_description(self, instance: SWEBenchInstance) -> str:
-        """Build task description for the Zyren."""
+        """Build task description for the Zyren AI Dev-Team."""
         parts = [
             f"Repository: {instance.repo}",
             f"Base Commit: {instance.base_commit}",

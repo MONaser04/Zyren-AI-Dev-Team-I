@@ -6779,7 +6779,7 @@ wheels = [
 ]
 
 [[package]]
-name = "zyren"
+name = "zyren-ai-dev-team"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

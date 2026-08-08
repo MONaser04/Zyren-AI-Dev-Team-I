@@ -2,7 +2,7 @@
 EvalResult Contract — Phase 5
 =============================
 Structured record representing the outcome of a single evaluation task
-run through the Zyren pipeline.
+run through the Zyren AI Dev-Team pipeline.
 """
 
 from __future__ import annotations

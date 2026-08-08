@@ -169,7 +169,7 @@ class PyRITRunner:
     PyRIT-based adversarial evaluation runner.
 
     Uses OWASP Agentic 2026 attack templates to systematically
-    test the Zyren against known vulnerability categories.
+    test the Zyren AI Dev-Team against known vulnerability categories.
     Can be extended with a real PyRIT orchestrator for advanced
     multi-turn conversation-based attacks.
     """

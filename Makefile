@@ -1,5 +1,5 @@
 # ============================================================
-# Zyren — Makefile
+# Zyren AI Dev-Team — Makefile
 # ============================================================
 # Usage:
 #   make install    — Install all dependencies via uv
@@ -25,7 +25,7 @@ RESET  := \033[0m
 
 help: ## Show this help message
 	@echo ""
-	@echo "$(BLUE)Zyren$(RESET) — Available targets:"
+	@echo "$(BLUE)Zyren AI Dev-Team$(RESET) — Available targets:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-15s$(RESET) %s\n", $$1, $$2}'

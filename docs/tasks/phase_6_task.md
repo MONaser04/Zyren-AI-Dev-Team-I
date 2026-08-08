@@ -1,7 +1,7 @@
 # Phase 6 Implementation Tasks
 
 ## Overview
-Comprehensive Evaluation Framework for Zyren — LLM-as-Judge calibration, trajectory-first evaluation, router anti-drift guardrail, adversarial red-teaming, unified orchestration, and CI/CD integration.
+Comprehensive Evaluation Framework for Zyren AI Dev-Team — LLM-as-Judge calibration, trajectory-first evaluation, router anti-drift guardrail, adversarial red-teaming, unified orchestration, and CI/CD integration.
 
 ---
 
@@ -264,8 +264,8 @@ python -c "from evals.orchestrator import run_phase6_evaluation; r = run_phase6_
 
 ### Docker Build Works
 ```bash
-docker build -f Dockerfile.eval --target phase6-test -t zyren:phase6-test .
-docker run --rm zyren:phase6-test
+docker build -f Dockerfile.eval --target phase6-test -t zyren-ai-dev-team:phase6-test .
+docker run --rm zyren-ai-dev-team:phase6-test
 ```
 
 ### GitHub Actions Workflow Valid

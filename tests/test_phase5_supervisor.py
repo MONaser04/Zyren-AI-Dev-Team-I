@@ -314,6 +314,6 @@ class TestReporter:
         report.add_round(rnd)
         report.finalize("completed")
         md = generate_markdown_report(report)
-        assert "# 🔄 Zyren" in md
+        assert "# 🔄 Zyren AI Dev-Team" in md
         assert "test-s1" in md
         assert "0.75" in md

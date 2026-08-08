@@ -46,14 +46,14 @@ SPAN_CHAT = "chat"
 SPAN_EXECUTE_TOOL = "execute_tool.{name}"
 SPAN_WORKFLOW = "workflow.{workflow_id}"
 
-_TRACER_NAME = "zyren.genai"
+_TRACER_NAME = "zyren-ai-dev-team.genai"
 _initialized = False
 
 
 @dataclass(frozen=True)
 class TracingConfig:
     """Configuration for the OTel tracer."""
-    service_name: str = "zyren"
+    service_name: str = "zyren-ai-dev-team"
     otlp_endpoint: str = "http://localhost:4318"  # OTLP HTTP default
     capture_prompts: bool = False  # privacy: OFF by default (README §4.1)
 

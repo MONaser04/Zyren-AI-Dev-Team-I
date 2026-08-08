@@ -72,7 +72,7 @@ class EpisodicStore:
     Uses Qdrant for v1 (see docker-compose.yml).
     """
 
-    def __init__(self, collection_name: str = "zyren_episodes") -> None:
+    def __init__(self, collection_name: str = "zyren-ai-dev-team_episodes") -> None:
         self._collection = collection_name
         self._episodes: dict[str, Episode] = {}
 

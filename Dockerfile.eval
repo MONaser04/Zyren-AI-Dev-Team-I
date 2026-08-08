@@ -5,7 +5,7 @@
 
 FROM python:3.12-slim
 
-LABEL org="Zyren"
+LABEL org="Zyren AI Dev-Team"
 LABEL phase="6"
 LABEL component="evaluation"
 
