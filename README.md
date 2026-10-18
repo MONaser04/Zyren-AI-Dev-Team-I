@@ -8,7 +8,9 @@
 
 **Provider-Agnostic · Grounded Verification · Self-Improving**
 
-[![Status](https://img.shields.io/badge/status-Active%20Development-yellow)](#-current-project-status)
+[![Project Status: Suspended / Archived](https://www.repostatus.org/badges/latest/suspended.svg)](https://www.repostatus.org/#suspended)
+[![Superseded by ZyrenClaw](https://img.shields.io/badge/Superseded%20by-ZyrenClaw-blue.svg)](https://github.com/MONaser04/ZyrenClaw)
+[![Status](https://img.shields.io/badge/status-Archived%20Prototype-yellow)](#-current-project-status)
 [![Agents](https://img.shields.io/badge/agents-17%20specialized%20roles-6f42c1)](#-agent-roster--17-specialized-roles)
 [![Providers](https://img.shields.io/badge/providers-10%2B%20auto--discovery-blue)](#-provider-adapters--auto-discovery)
 [![Engine](https://img.shields.io/badge/engine-LangGraph%20Star%20Topology-0d1117)](#-orchestration-engine)
@@ -23,6 +25,12 @@
 ---
 
 </div>
+
+> [!IMPORTANT]
+> **Project Status: Archived & Superseded by ŽyrenClaw (Generation 3)**
+> Active development on this repository has concluded and it is preserved in read-only archive mode. This codebase represents the foundational **Generation 1 (17-Agent Swarm)** of the Žyren architecture (built with LangGraph star topology, Bayesian routing, Qdrant memory, and strict Pydantic v2 schemas). All active autonomous multi-agent engineering workflows have evolved into the lightweight, 5-agent vertical hub-and-spoke production architecture at [**MONaser04/ZyrenClaw**](https://github.com/MONaser04/ZyrenClaw).
+
+---
 
 ## 📖 Overview
 
